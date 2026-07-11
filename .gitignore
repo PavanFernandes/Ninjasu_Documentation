@@ -1,0 +1,14 @@
+# Obsidian instance-local state — not shared config
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/cache
+
+# Secrets backstop — this vault is a decision/knowledge log, never a secrets store.
+# If a file matches one of these, it does not belong here (see README "What never enters the vault").
+*credentials*
+*.keystore
+*.jks
+*.pem
+*.key
+.env
+.env.*
