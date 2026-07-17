@@ -2,7 +2,7 @@
 
 This is the **canonical knowledge source** for the Ninjasu platform: one shared backend
 (`ninja delivery service java`) serving three clients — the customer app
-(`Food-Ninja-Frontend`), `Ninjasu_Admin_Dashboard`, and `Ninjasu_Rider_App`. It is an Obsidian
+(`Food-Ninja-Frontend`), `Ninjasu_Web`, and `Ninjasu_Rider_App`. It is an Obsidian
 vault and a git repo, checked out as a sibling of those four repos.
 
 This page is the system's own memory of itself — read it before adding anything, so the design
@@ -95,7 +95,7 @@ concrete failure mode this design would otherwise hit. They are law, not suggest
 02-Domain/           Shared business rules (menu, cart, wishlist, core, captain-ordering…)
 03-Backend/          API contracts, data model, auth — backend-owned, cross-client
 04-Customer-App/     Customer app (Food-Ninja-Frontend) specific knowledge
-05-Admin-Dashboard/  Admin dashboard specific knowledge (stub — being built)
+05-Web/              Ninjasu_Web knowledge — admin + shop dashboards, marketing, guest (stub)
 06-Rider-App/        Rider app specific knowledge (stub — being built)
 07-Roadmap/          Backlog, loopholes, in-progress feature specs, pending flags
 08-Ops/              Deploy, signing, docker — references, never secrets

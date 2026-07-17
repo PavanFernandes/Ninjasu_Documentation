@@ -17,7 +17,7 @@ know what you need.
 ## By app
 
 - [Customer App MOC](Customer-App-MOC.md) — Food-Ninja-Frontend
-- [Admin Dashboard MOC](Admin-Dashboard-MOC.md)
+- [Web App MOC](Web-App-MOC.md) — Ninjasu_Web (admin + shop dashboards, marketing, guest)
 - [Rider App MOC](Rider-App-MOC.md)
 - Backend is shared — see **By shared layer** below, all of it applies.
 

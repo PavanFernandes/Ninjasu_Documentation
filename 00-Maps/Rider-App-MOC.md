@@ -32,7 +32,7 @@ two clients (customer, admin) — it does not get its own business logic:
 
 Its own knowledge (screens, flows, rider-app-specific decisions, UX reviews) goes in
 [`../06-Rider-App/`](../06-Rider-App/) — mirroring how `../04-Customer-App/` and
-`../05-Admin-Dashboard/` are organized for their respective apps. This MOC should then be
+`../05-Web/` are organized for their respective apps. This MOC should then be
 expanded from a stub into a full map pointing into that folder.
 
 ## Relevant decisions
