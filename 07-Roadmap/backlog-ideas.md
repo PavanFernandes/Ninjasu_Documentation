@@ -194,6 +194,10 @@ updated: 2026-07-11
 
 ## Idea — Guest QR-to-Check (unify captain ordering + scan-to-order)  [from Captain Ordering scout, 2026-07-10]
 
+**✅ SHIPPED 2026-08-03** — see [`02-Domain/guest-ordering.md`](../02-Domain/guest-ordering.md).
+The mechanism landed as per-table-session staff approval rather than making the Check fully
+source-agnostic as originally sketched below; description kept for historical context.
+
 **What it is:** A QR sticker on the dine-in table that opens the *same* `table_checks` row the
 waiter is using. A guest adds "one more naan" from their own phone → it drops in as another KOT
 on the waiter's check + the kitchen queue, no waiter retype.

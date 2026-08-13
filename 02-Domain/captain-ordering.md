@@ -103,7 +103,7 @@ every shop member on a new order*. The captain flow reuses all of it.
 | **Manager** | `MANAGER` membership | Everything a waiter does + table setup; later: discounts/comps. |
 | **Waiter / Captain** | `STAFF` membership | Opens a table's check, fires KOTs, serves, records payment. The primary user. |
 | **Kitchen** | any member on the KDS device | Watches the live ticket board, taps Start / Ready. |
-| **Guest** | walk-in (not a platform user) | Sits, orders via the waiter. (Later: scan a QR to add to their own check — backlog.) |
+| **Guest** | walk-in (not a platform user) | Sits, orders via the waiter — or scans the table's QR to order themselves, gated on a one-time staff approval per table-session. See [`guest-ordering.md`](guest-ordering.md) (built 2026-08-03, separate from this spec's original scope). |
 
 ---
 
@@ -138,7 +138,7 @@ Takeaway is the same, minus steps 1 and 4–6's table: the counter staff fires a
 
 **Non-goals for this feature (explicitly out of scope — see backlog §14):**
 - Money movement / payment gateway, printed GST bill, QR pay-at-table, split bill.
-- Guest self-ordering via QR (designed-for, not built).
+- Guest self-ordering via QR — now built as its own feature, see [`guest-ordering.md`](guest-ordering.md); was designed-for but out of scope when this spec was written.
 - Delivery "add to order" (Blinkit-style), rider app, kitchen-station routing, offline mode,
   move/merge tables, discounts/comps.
 
@@ -526,9 +526,9 @@ splitting them would have meant reopening the same classes twice for no benefit.
 separate Phase 2 items (frontend filter, reporting dashboard) remain.
 
 **Backlog (NOT this feature — see `agents/innovation/backlog-ideas.md`):** bill + QR pay-at-table +
-**GST breakup** · split bill · **guest QR-to-check** (the wedge) · move/merge tables · kitchen-station
-routing · offline KOT queue · **delivery add-to-order (Blinkit parity)** · covers/turn-time analytics ·
-discounts & comps.
+**GST breakup** · split bill · move/merge tables · kitchen-station routing · offline KOT queue ·
+**delivery add-to-order (Blinkit parity)** · covers/turn-time analytics · discounts & comps.
+(**Guest QR-to-check** shipped separately — see [`guest-ordering.md`](guest-ordering.md), no longer backlog.)
 
 ---
 

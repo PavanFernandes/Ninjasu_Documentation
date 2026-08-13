@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ninjasu Rider App — Handover</title>
+<style>
+  :root {
+    --ink-950: #17181c;
+    --ink-800: #232429;
+    --ink-700: #3a3c44;
+    --ink-500: #6b6e78;
+    --paper-50: #f6f4ef;
+    --paper-100: #edeae2;
+    --paper-200: #e2ddd0;
+    --hairline: #d8d2c2;
+    --text: #232128;
+    --text-muted: #5c5947;
+    --accent: #b5761f;
+    --accent-ink: #7c4f12;
+    --verified: #3f7a54;
+    --verified-bg: #e8f0e6;
+    --risk: #a8402f;
+    --risk-bg: #f6e8e3;
+    --locked: #4a5a7a;
+    --locked-bg: #e8ebf2;
+    --neutral-bg: #eeece5;
+    --code-bg: #eae5d6;
+    --shadow: 0 1px 2px rgba(23,24,28,0.06), 0 8px 24px -12px rgba(23,24,28,0.18);
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", "Liberation Mono", monospace;
+  }
+
+  :root[data-theme="dark"] {
+    --text: #ece9e0;
+    --text-muted: #a9a493;
+    --hairline: #38393f;
+    --paper-50: #17181c;
+    --paper-100: #1d1e23;
+    --paper-200: #232429;
+    --accent: #d89c43;
+    --accent-ink: #f0c17e;
+    --verified: #74b98c;
+    --verified-bg: #1c2b21;
+    --risk: #dd7b67;
+    --risk-bg: #2e1f1c;
+    --locked: #8fa0c7;
+    --locked-bg: #1e2330;
+    --neutral-bg: #232429;
+    --code-bg: #232429;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --text: #ece9e0;
+      --text-muted: #a9a493;
+      --hairline: #38393f;
+      --paper-50: #17181c;
+      --paper-100: #1d1e23;
+      --paper-200: #232429;
+      --accent: #d89c43;
+      --accent-ink: #f0c17e;
+      --verified: #74b98c;
+      --verified-bg: #1c2b21;
+      --risk: #dd7b67;
+      --risk-bg: #2e1f1c;
+      --locked: #8fa0c7;
+      --locked-bg: #1e2330;
+      --neutral-bg: #232429;
+      --code-bg: #232429;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--paper-50);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--accent-ink); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, button:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  code, .mono {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--code-bg);
+    padding: 0.12em 0.4em;
+    border-radius: 4px;
+  }
+
+  .page {
+    display: grid;
+    grid-template-columns: 250px minmax(0, 760px);
+    justify-content: center;
+    gap: 56px;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 48px 24px 120px;
+  }
+
+  /* ---------- TOC rail ---------- */
+  nav.toc {
+    position: sticky;
+    top: 40px;
+    align-self: start;
+    font-family: var(--sans);
+    max-height: calc(100vh - 80px);
+    overflow-y: auto;
+  }
+  nav.toc .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0 0 12px;
+    font-weight: 600;
+  }
+  nav.toc ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-left: 1px solid var(--hairline);
+  }
+  nav.toc li { margin: 0; }
+  nav.toc a {
+    display: block;
+    padding: 7px 0 7px 16px;
+    margin-left: -1px;
+    border-left: 2px solid transparent;
+    color: var(--text-muted);
+    font-size: 14.5px;
+    text-decoration: none;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  nav.toc a:hover { color: var(--text); border-left-color: var(--hairline); }
+  nav.toc .toc-sub a { padding-left: 30px; font-size: 13.5px; }
+
+  /* ---------- main column ---------- */
+  main { min-width: 0; }
+
+  .doc-head { margin-bottom: 40px; }
+  .doc-eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    font-weight: 700;
+    margin: 0 0 10px;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 40px;
+    line-height: 1.15;
+    margin: 0 0 8px;
+    text-wrap: balance;
+    color: var(--text);
+  }
+  .doc-sub {
+    color: var(--text-muted);
+    font-size: 16px;
+    margin: 0;
+    max-width: 60ch;
+  }
+
+  h2 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 27px;
+    line-height: 1.25;
+    margin: 56px 0 18px;
+    padding-top: 4px;
+    text-wrap: balance;
+    scroll-margin-top: 32px;
+  }
+  h2 .num {
+    display: inline-block;
+    color: var(--accent);
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: 0.6em;
+    margin-right: 10px;
+    vertical-align: middle;
+  }
+  h3 {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 18px;
+    margin: 30px 0 12px;
+    scroll-margin-top: 32px;
+  }
+  h4 {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 15px;
+    margin: 22px 0 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-size: 12.5px;
+  }
+
+  p { margin: 0 0 16px; max-width: 68ch; }
+  ul, ol { margin: 0 0 16px; padding-left: 1.3em; max-width: 66ch; }
+  li { margin-bottom: 7px; }
+  li:last-child { margin-bottom: 0; }
+  strong { font-weight: 700; color: var(--text); }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--hairline);
+    margin: 48px 0;
+  }
+
+  /* ---------- callouts ---------- */
+  .callout {
+    border: 1px solid var(--hairline);
+    border-left: 4px solid var(--ink-500);
+    background: var(--paper-100);
+    border-radius: 6px;
+    padding: 18px 20px;
+    margin: 0 0 20px;
+    box-shadow: var(--shadow);
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .label {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .callout.verified { border-left-color: var(--verified); background: var(--verified-bg); }
+  .callout.verified .label { color: var(--verified); }
+  .callout.risk { border-left-color: var(--risk); background: var(--risk-bg); }
+  .callout.risk .label { color: var(--risk); }
+  .callout.locked { border-left-color: var(--locked); background: var(--locked-bg); }
+  .callout.locked .label { color: var(--locked); }
+  .callout.note { border-left-color: var(--accent); }
+  .callout.note .label { color: var(--accent-ink); }
+
+  /* ---------- status banner ---------- */
+  .status-banner {
+    border: 1px solid var(--verified);
+    background: var(--verified-bg);
+    border-radius: 8px;
+    padding: 22px 24px;
+    margin: 0 0 40px;
+    box-shadow: var(--shadow);
+  }
+  .status-banner .flag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--verified);
+    margin-bottom: 10px;
+  }
+  .status-banner .flag::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--verified);
+  }
+  .status-banner p { margin-bottom: 10px; max-width: none; }
+  .status-banner p:last-child { margin-bottom: 0; }
+
+  /* ---------- tables ---------- */
+  .table-wrap { overflow-x: auto; margin: 0 0 20px; border: 1px solid var(--hairline); border-radius: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; background: var(--paper-100); }
+  th, td { text-align: left; padding: 11px 16px; vertical-align: top; }
+  thead th {
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--hairline);
+    font-weight: 700;
+  }
+  tbody tr + tr td { border-top: 1px solid var(--hairline); }
+  tbody tr:nth-child(odd) { background: color-mix(in srgb, var(--paper-50) 55%, transparent); }
+  td:first-child, th:first-child { font-weight: 600; }
+
+  /* numbered risk list */
+  ol.risk-list { list-style: none; padding: 0; margin: 0 0 20px; counter-reset: risk; }
+  ol.risk-list li {
+    counter-increment: risk;
+    display: grid;
+    grid-template-columns: 30px 1fr;
+    gap: 4px 14px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--hairline);
+    margin: 0;
+  }
+  ol.risk-list li:last-child { border-bottom: none; }
+  ol.risk-list li::before {
+    content: counter(risk);
+    font-family: var(--mono);
+    font-weight: 600;
+    color: var(--risk);
+    font-size: 15px;
+    line-height: 1.65;
+  }
+  ol.risk-list strong { display: block; margin-bottom: 2px; }
+
+  /* decision list */
+  ul.decisions { list-style: none; padding: 0; margin: 0 0 20px; }
+  ul.decisions li {
+    position: relative;
+    padding: 12px 0 12px 26px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  ul.decisions li:last-child { border-bottom: none; }
+  ul.decisions li::before {
+    content: "🔒";
+    position: absolute;
+    left: 0;
+    top: 12px;
+    font-size: 13px;
+    filter: grayscale(1) opacity(0.7);
+  }
+
+  /* legend */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 18px;
+    margin: 0 0 28px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .legend .dot.v { background: var(--verified); }
+  .legend .dot.r { background: var(--risk); }
+  .legend .dot.l { background: var(--locked); }
+
+  /* footer */
+  footer {
+    margin-top: 64px;
+    padding-top: 24px;
+    border-top: 1px solid var(--hairline);
+    color: var(--text-muted);
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  /* mobile */
+  @media (max-width: 880px) {
+    .page { grid-template-columns: 1fr; padding: 32px 20px 80px; gap: 28px; }
+    nav.toc { position: static; max-height: none; border-bottom: 1px solid var(--hairline); padding-bottom: 20px; }
+    h1 { font-size: 32px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+
+  @media print {
+    nav.toc { display: none; }
+    .page { grid-template-columns: 1fr; display: block; padding: 0; }
+    body { font-size: 12pt; }
+    .callout, .status-banner, .table-wrap { box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<nav class="toc" aria-label="Table of contents">
+  <p class="eyebrow">On this page</p>
+  <ol>
+    <li><a href="#status">Current status</a></li>
+    <li><a href="#s1">1 · What this project is</a></li>
+    <li><a href="#s2">2 · How the app works</a></li>
+    <li><a href="#s3">3 · What is already built</a></li>
+    <li><a href="#s4">4 · What is not built</a></li>
+    <li class="toc-sub"><a href="#s4-gaps">— Not built at all</a></li>
+    <li class="toc-sub"><a href="#s4-risks">— Silent-failure risks</a></li>
+    <li><a href="#s5">5 · Decisions — do not reopen</a></li>
+    <li><a href="#s6">6 · Where to look things up</a></li>
+  </ol>
+</nav>
+
+<main>
+
+  <div class="doc-head">
+    <p class="doc-eyebrow">Engineering Handover</p>
+    <h1>Ninjasu Rider App</h1>
+    <p class="doc-sub">What the project is, how it works, what's built, and what genuinely isn't — written so the next implementer never has to guess or re-derive an architectural decision alone.</p>
+  </div>
+
+  <div class="legend" aria-hidden="true">
+    <span><i class="dot v"></i> Device-verified</span>
+    <span><i class="dot r"></i> Silent-failure risk</span>
+    <span><i class="dot l"></i> Locked decision</span>
+  </div>
+
+  <section id="status" class="status-banner">
+    <p class="flag">Status as of 9 August 2026</p>
+    <p><strong>The assign/cancel half of the rider loop is device-verified.</strong> A shop's staff manually assigning or cancelling a delivery correctly rings the rider's phone and syncs status — confirmed on a real Android device on 6 August, including the order-decline cascade that used to fail silently. Two real bugs surfaced during that test and were fixed, deployed, and re-verified the same day: a notification-channel registration gap, and a 500 response on order-decline that masked an already-successful state change.</p>
+    <p><strong>The broadcast/ring/accept loop is not verified.</strong> Nobody has watched an order reach <code>READY</code>, watched every eligible rider's phone ring at once, and watched the first tap win. That loop shares almost no code path with what's been tested — treat it as entirely unproven. Closing that gap is what <a href="#s2">§2</a>'s walkthrough and the roadmap's Phase&nbsp;1 exist for.</p>
+  </section>
+
+  <h2 id="s1"><span class="num">01</span>What this project is</h2>
+
+  <p>Ninjasu is a food-delivery platform built as four codebases sharing one backend and one database.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Repo</th><th>What it is</th><th>Who uses it</th></tr></thead>
+      <tbody>
+        <tr><td><code>ninja&nbsp;delivery&nbsp;service&nbsp;java</code></td><td>Spring Boot backend + Neon Postgres</td><td>Everyone — the only source of truth</td></tr>
+        <tr><td><code>Food-Ninja-Frontend</code></td><td>React Native — customer + shop-owner in one</td><td>Customers, restaurant staff</td></tr>
+        <tr><td><code>Ninjasu_Web</code></td><td>Next.js — platform admin + shop dashboard</td><td>Ninjasu admins, shop owners</td></tr>
+        <tr><td><code>Ninjasu_Rider_App</code></td><td>React Native — <strong>this project</strong></td><td>Delivery riders</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>The rider app is the newest and least finished of the four. It holds no business rules of its own — the backend owns all logic, and the app simply renders what the API returns.</p>
+
+  <h3>Two kinds of rider</h3>
+  <p>This distinction drives everything else in the system:</p>
+  <ul>
+    <li><strong>Restaurant rider</strong> — belongs to one specific shop's own fleet. Only ever delivers for that shop.</li>
+    <li><strong>Platform rider</strong> — a Ninjasu-wide rider, reaching shops only by being placed in a <strong>delivery zone</strong> that contains those shops.</li>
+  </ul>
+  <p>A delivery zone is a named, hand-picked cluster of shops — e.g. "HSR Zone." Admins put shops into a zone and platform riders into the same zone; that membership is what decides whose phone rings.</p>
+
+  <h3>Two independent shop-side settings</h3>
+  <p>As of ADR-0019 (6&nbsp;Aug) — this used to be one conflated setting, since corrected:</p>
+  <ul>
+    <li><strong>Delivery mode</strong> (<code>SELF</code> / <code>PLATFORM</code> / <code>NONE</code>) — <em>who</em> the eligible riders are. <code>SELF</code> = the shop's own fleet only. <code>PLATFORM</code> = own fleet plus riders in a zone covering the shop.</li>
+    <li><strong>Dispatch mode</strong> (<code>MANUAL</code> / <code>BROADCAST</code>) — <em>how</em> dispatch reaches them. <code>MANUAL</code> = staff pick a rider by hand, works under either delivery mode. <code>BROADCAST</code> = automatic, every eligible online rider's phone rings at once, first to accept wins.</li>
+  </ul>
+  <p>A <code>SELF</code> shop can now be <code>BROADCAST</code> — its own fleet's phones ring automatically without the shop having to misrepresent itself as <code>PLATFORM</code> and share orders with the wider pool. Staff can always fall back to manually calling a rider regardless of dispatch mode.</p>
+
+  <h2 id="s2"><span class="num">02</span>How the app works</h2>
+  <p>No technical terms — this is the flow to walk a new person through, and it is also the exact end-to-end test that Phase&nbsp;1 of the roadmap runs.</p>
+
+  <h3>Getting started, once per rider</h3>
+  <ol>
+    <li>Rider installs the app and enters their phone number.</li>
+    <li>They get a 4-digit code and type it in. <em>(In development the code is always <code>1234</code>.)</em></li>
+    <li>First time only: they fill in vehicle details — type and registration number.</li>
+    <li>They land on the home screen.</li>
+  </ol>
+
+  <h3>A normal working shift</h3>
+  <ol start="5">
+    <li>Rider taps a toggle to go <strong>online</strong> — saying "I'm available for work."</li>
+    <li>A customer orders food elsewhere. The restaurant accepts it and starts cooking.</li>
+    <li>When the food is packed, restaurant staff mark the order <strong>Ready</strong>.</li>
+    <li><strong>Every</strong> available rider who covers that restaurant is notified at the same time — phones ring with the shop name, item count, and cash to collect.</li>
+    <li>The <strong>first</strong> rider to tap <strong>Accept</strong> gets the job. Everyone else who taps a moment later sees "Already taken" — nobody can double-book an order.</li>
+    <li>The winning rider sees the pickup address, drop address, and the customer's name and phone.</li>
+    <li>Rider drives to the restaurant and taps <strong>Picked&nbsp;Up</strong>. The system generates a 4-digit delivery code and shows it to the <em>customer</em>, in their app.</li>
+    <li>Rider taps <strong>Out for Delivery</strong> and drives to the customer.</li>
+    <li>At the door: the customer reads out their 4-digit code, the rider types it in — proving the rider reached the right person.</li>
+    <li>Rider enters the cash actually collected and taps complete. A short amount still completes (with a reason) — <strong>the rider is never blocked from finishing.</strong> The shortfall is flagged for office staff to reconcile later.</li>
+    <li>Delivery done — the order shows as delivered in the customer's app automatically.</li>
+  </ol>
+  <p><strong>When things go wrong</strong> — office staff can reassign a delivery to a different rider, cancel it, or force-complete it (for example, if the customer's phone is dead and the code can't be read out).</p>
+
+  <div class="callout note">
+    <span class="label">The one thing to understand about step 8</span>
+    <p>The notification goes to <strong>everyone at once</strong>; whoever taps first wins. Deliberate and simple — the <em>fastest</em> rider wins, not necessarily the <em>closest</em>. Fine with a handful of riders per zone; becomes a real problem past roughly five, which the roadmap records as the trigger to revisit it. <strong>Do not redesign this without asking.</strong></p>
+  </div>
+
+  <h2 id="s3"><span class="num">03</span>What is already built</h2>
+  <p>Nearly all of the core loop exists in code — the caveat is entirely about which parts have been proven to work; see <a href="#s4">§4</a>.</p>
+
+  <h4>Backend — complete and committed for the whole rider lifecycle</h4>
+  <ul>
+    <li>Rider signup that never rejects an existing phone number, so a customer can also become a rider</li>
+    <li>Rider profile, go-online/offline, vehicle registration</li>
+    <li>Delivery zones, rider types, and the rule deciding whose phone rings</li>
+    <li>Automatic dispatch when an order becomes Ready</li>
+    <li>Rider accept, with genuine protection against two riders taking the same order</li>
+    <li>Status progression, delivery-code generation, cash collection with shortfall flagging</li>
+    <li>Office-staff paths: reassign, cancel, force-complete, cash reconciliation</li>
+    <li>Order and delivery status kept in step automatically in both directions — including: cancelling an order terminates a live delivery</li>
+    <li><strong>(6&nbsp;Aug)</strong> <code>dispatchMode</code> (independent of delivery mode, ADR-0019) plus <code>DELIVERY_ASSIGNED</code>/<code>DELIVERY_REVOKED</code> rider push on staff assign/reassign/cancel — including the customer-cancels-the-order path, which previously terminated a delivery with no audit trail and no notification at all</li>
+  </ul>
+
+  <h4>Rider app — the full loop has screens</h4>
+  <ul>
+    <li>Phone + code login, signup, vehicle registration</li>
+    <li>Home screen with the online toggle and the rider's deliveries</li>
+    <li>Incoming-offer screen that rings, with Accept / Dismiss and "Already taken" handling</li>
+    <li>Active-delivery screen with status buttons and location sending</li>
+    <li>Delivery-code + cash completion</li>
+  </ul>
+
+  <h4>Web admin — built and committed</h4>
+  <ul>
+    <li>Manage riders and their type/shop</li>
+    <li>Create and edit delivery zones, add shops and riders to them</li>
+    <li>A panel showing shop staff which riders are online, so they can phone them directly</li>
+  </ul>
+
+  <h4>Customer app</h4>
+  <ul>
+    <li>Shows the 4-digit delivery code on the order screen — previously a hard blocker, now fixed</li>
+  </ul>
+
+  <div class="callout">
+    <span class="label">Quality note</span>
+    <p>The tricky concurrency parts were done carefully and deliberately — the double-booking protection and the accept endpoint both contain non-obvious choices that are correct on purpose. <code>code_map.md</code> records <em>why</em> for each, marked "don't 'fix' this." Read those notes before touching them.</p>
+  </div>
+
+  <h2 id="s4"><span class="num">04</span>What is not built, and the honest status</h2>
+
+  <div class="callout risk">
+    <span class="label">The single most important fact</span>
+    <p><strong>Steps 1–2 and 10–15 of the §2 journey are device-verified (6&nbsp;Aug) — steps 3–9, the actual broadcast/ring/accept loop, are not.</strong> A shop's staff manually assigning or cancelling a delivery correctly rings the rider's phone and syncs status. But nobody has watched an order reach Ready, watched every eligible rider's phone ring at once, and watched the first tap win — that specific loop has never run on a real device, at any point in this feature's history.</p>
+    <p>Do not treat "assign/cancel works" as evidence the broadcast loop works too — <strong>they share almost no code path.</strong> Phase&nbsp;1 of the roadmap exists to establish that the broadcast loop actually works.</p>
+  </div>
+
+  <h3 id="s4-gaps">Not built at all</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Gap</th><th>Consequence today</th></tr></thead>
+      <tbody>
+        <tr><td>Customer can't see the rider on a map</td><td>The rider sends location and the backend serves it, but no screen displays it. Live tracking effectively doesn't exist for the customer.</td></tr>
+        <tr><td>Location only sends while the app is open on screen</td><td>A rider who pockets their phone stops transmitting — which is what riders normally do, so tracking is unusable in practice until a proper background service exists, which needs a special build of the app.</td></tr>
+        <tr><td>No rider ID</td><td>Riders are identified by a long internal code that can't be read aloud on a support call.</td></tr>
+        <tr><td>No earnings screen</td><td>Riders can't see what they've earned — deliberately parked, since the payout formula hasn't been decided.</td></tr>
+        <tr><td>"Missions" wording</td><td>The plan is to call deliveries "missions" for the ninja theme. Not done. Cosmetic only.</td></tr>
+        <tr><td>Assigning zones from the shop's own page</td><td>Admins can add shops to a zone, but can't open a shop and set its zones. Same data, missing direction.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="s4-risks">Risks that are worse than missing features</h3>
+  <p>These look like they work but fail silently. They are the priority.</p>
+
+  <ol class="risk-list">
+    <li><div><strong>A shop set to PLATFORM but not placed in any zone does nothing at all.</strong> Orders reach Ready, no phone ever rings, and the only trace is a line in a server log. The shop appears fully configured. This will happen during a demo.</div></li>
+    <li><div><strong>"All riders ignored it" is indistinguishable from "no riders online."</strong> Dismissing an offer writes nothing anywhere — if every rider ignores an order, it simply sits at Ready with nobody alerted.</div></li>
+    <li><div><strong>Riders carry unlimited platform cash.</strong> Cash is recorded and reconciled afterwards, but nothing stops one rider accumulating a large amount across many deliveries before depositing any of it. Every control is after-the-fact — a money-loss risk, not a technical one.</div></li>
+    <li><div><strong>The loud ring may quietly become a normal notification.</strong> An Android policy change (Jan 2025) restricts full-screen alerts to phone/messaging/alarm apps. A delivery app doesn't qualify, and the system downgrades silently rather than reporting an error.</div></li>
+    <li><div><strong>"Online" is an unverified self-declaration.</strong> No heartbeat, no idle location, no record of who accepts or ignores work. Staff can be shown a rider who's asleep.</div></li>
+    <li><div><strong>A zone has no geographic boundary.</strong> It groups shops, so it controls where a rider <em>picks up</em> — but nothing limits how far the <em>drop-off</em> can be.</div></li>
+  </ol>
+
+  <div class="callout verified">
+    <span class="label">Resolved — was previously a launch blocker</span>
+    <p>This section used to warn that <code>Ninjasu_Rider_App</code> was entirely untracked in git, one careless cleanup command from total loss. As of 6&nbsp;Aug the repo has real history on <code>main</code> — no longer a single-commit risk. Not independently re-verified whether <code>.env</code>/secrets are correctly gitignored, so still worth a quick look before assuming that specific detail is clean.</p>
+  </div>
+
+  <h2 id="s5"><span class="num">05</span>Decisions already locked</h2>
+  <p>Treat these as settled. Each was decided deliberately — re-litigating them wastes time.</p>
+
+  <ul class="decisions">
+    <li><strong>A delivery is never edited, only replaced.</strong> Reassigning keeps the old record as history and creates a new one. Never mutate a delivery in place.</li>
+    <li><strong>The notification goes to everyone; first to accept wins.</strong> Not one-at-a-time offers, no queue, no ranking. Revisit only past ~5 riders per zone.</li>
+    <li><strong>Nothing is written to the database until a rider accepts.</strong> There is no "offered" state.</li>
+    <li><strong>Live location is fetched by polling, not a persistent connection</strong> (ADR-0013).</li>
+    <li><strong>The delivery code proves the rider arrived — it does not prove the cash was right</strong> (ADR-0014). A short payment still completes and gets flagged; it must never trap the rider.</li>
+    <li><strong>One on-duty device per rider</strong> (ADR-0015).</li>
+    <li><strong>Riders are not shop staff.</strong> They are never invited through the shop team screen.</li>
+    <li><strong>"Missions" is display text only.</strong> Never rename anything in the API, database, or code.</li>
+  </ul>
+
+  <h2 id="s6"><span class="num">06</span>Where to look things up</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Question</th><th>Go to</th></tr></thead>
+      <tbody>
+        <tr><td>Where is the file that does X?</td><td><code>Food-Ninja-Frontend/skills/code_map.md</code></td></tr>
+        <tr><td>What should I build next?</td><td><code>implementation-roadmap.md</code></td></tr>
+        <tr><td>Why was this designed this way?</td><td><code>01-Architecture/decisions/</code> — ADR-0013 / 0014 / 0015 / 0019 are the rider ones</td></tr>
+        <tr><td>What are the known risks in detail?</td><td><code>rider-dispatch-phase3-plan.md</code> §9</td></tr>
+        <tr><td>What did the competitor/business review find?</td><td><code>Ninjasu_Rider_App/agents/market/rider-dispatch-scout.md</code></td></tr>
+        <tr><td>What rules apply to every app?</td><td><code>01-Architecture/principles.md</code></td></tr>
+        <tr><td>How does the backend talk to apps?</td><td><code>03-Backend/</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>House rules that matter on day one</h4>
+  <ul>
+    <li>The backend is the only source of truth. Never re-implement a pricing, discount, or validation rule in the app — render what the API returns.</li>
+    <li>One HTTP client per app. Never write a second fetch wrapper.</li>
+    <li>Never put a font family in a stylesheet — use the shared text component.</li>
+    <li>Features must not import from each other; share through the store or shared folder.</li>
+    <li>Colours come from the constants file, never hard-coded.</li>
+  </ul>
+
+  <footer>
+    <span>Ninjasu Rider App — Engineering Handover</span>
+    <span>Source: <code>06-Rider-App/handover.md</code> · reviewed against code 9&nbsp;Aug&nbsp;2026</span>
+  </footer>
+
+</main>
+</div>
+</body>
+</html>

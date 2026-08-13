@@ -14,9 +14,10 @@ updated: 2026-07-17
 **Ninjasu_Web** — the platform's **web client**, the desktop counterpart to the mobile
 `Food-Ninja-Frontend`. One repo, four route-grouped audiences: **Ninjasu-team admin** + **shop /
 restaurant dashboard** (both being built now), a **public marketing site** (ninjasu.com landing),
-and **guest QR-ordering** (backlog — table-QR → menu → order). **Not built yet** as of 2026-07-17 —
-repo exists, no code. This stub exists so the vault's app coverage is complete and so anyone starting
-the build lands on a page that already points at everything it shares with the rest of the platform.
+and **guest QR-ordering** (table-QR → menu → order, built 2026-08-03 — see
+[`02-Domain/guest-ordering.md`](../02-Domain/guest-ordering.md)). This stub exists so the vault's
+app coverage is complete and so anyone starting further build lands on a page that already points
+at everything it shares with the rest of the platform.
 
 ## Scope being built (Phase 1 onward)
 
@@ -27,8 +28,9 @@ the build lands on a page that already points at everything it shares with the r
   Captain Ordering — reuses the same endpoints/state, does not re-derive), staff management, order
   acceptance controls, payout/earnings, best-selling widget.
 - **Marketing:** static landing (+ optional partner-signup feeding admin onboarding).
-- **Guest QR-ordering:** backlog; needs a signed table-token + staff-approval gate before an
-  unauthenticated order fires to the KOT.
+- **Guest QR-ordering:** built — signed table-token + per-table-session staff-approval gate before
+  an unauthenticated order fires to the KOT. See
+  [`02-Domain/guest-ordering.md`](../02-Domain/guest-ordering.md).
 
 Stack: Next.js (App Router) + Tailwind + shadcn/ui. Feature isolation by route group `(admin)` /
 `(shop)` / `(marketing)` / `(guest)` + a `features/` split, only `shared/` importable by all.

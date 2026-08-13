@@ -26,8 +26,8 @@ know what you need.
 - [Architecture](../01-Architecture/principles.md) — long-horizon principles, tagged
   `[SHARED]` / `[FRONTEND]` / `[BACKEND]`
 - [Decisions (ADRs)](../01-Architecture/decisions/) — why things are the way they are
-- [Domain rules](../02-Domain/) — menu, cart, wishlist, core, captain-ordering — true for every
-  client
+- [Domain rules](../02-Domain/) — menu, cart, wishlist, core, captain-ordering, guest-ordering —
+  true for every client
 - [Backend contracts](../03-Backend/) — API shape, auth, data model
 - [Roadmap](../07-Roadmap/) — backlog, in-progress designs, pending flags
 - [Ops](../08-Ops/) — deploy, signing, docker

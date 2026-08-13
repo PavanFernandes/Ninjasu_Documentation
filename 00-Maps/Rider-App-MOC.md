@@ -4,51 +4,72 @@ type: reference
 status: active
 apps: [rider]
 module: "meta"
-anchors: []
-verified_against: ""
-updated: 2026-07-11
+anchors:
+  - { repo: "Ninjasu_Rider_App", path: "app" }
+verified_against: "07d0f59"
+updated: 2026-07-30
 ---
 
 # Rider App — Map of Content
 
-**Ninjasu_Rider_App** — this app has **not been built yet**. This is a stub hub note reserving
-its place in the vault structure so links and cross-references resolve correctly once work
-starts. There is no repo, no code, and no anchors yet.
+**Ninjasu_Rider_App** — React Native (Expo SDK 54) delivery-rider app, a client of the same shared
+backend as the customer and web apps. **The core delivery loop is built but has never been run on a
+real device.**
 
-## What it will share
+> **Status corrected 2026-07-30.** This MOC previously said the app "has not been built yet" — that
+> was true when written (2026-07-11) and is now badly wrong. The repo, the code, and the backend
+> lifecycle all exist.
 
-When built, this app is still a client of the same shared backend and domain rules as the other
-two clients (customer, admin) — it does not get its own business logic:
+## Start here
 
-- [Backend contracts](../03-Backend/) — shared backend (`ninja delivery service java`); same API
-  envelope, auth, and endpoints the other apps consume.
-- [Domain rules](../02-Domain/) — shared business rules that every client renders, not
-  re-implements. In particular, order lifecycle and delivery-address rules will apply directly.
-- [Architecture Principles](../01-Architecture/principles.md) — read the `[SHARED]` tagged
-  principles when scaffolding starts; `[FRONTEND]` principles will likely apply too once this
-  becomes a client app, but confirm against whatever stack the rider app ends up built in.
+| If you are… | Read |
+|---|---|
+| Debugging "the rider got no notification" | [Dispatch triggers](../06-Rider-App/dispatch-triggers.md) — **the canonical answer to "when does a rider get notified?"**; six gates, walk them top-down |
+| New to the project / taking it over | [Handover](../06-Rider-App/handover.md) — what it is, plain-language user flow, built vs not built |
+| Picking up implementation work | [Implementation roadmap](../06-Rider-App/implementation-roadmap.md) — phased, split into decisions vs build tasks |
+| Reviewing the design or its risks | [Phase 3 plan](../06-Rider-App/rider-dispatch-phase3-plan.md) — technical findings, §9 review table, open questions |
+| Looking for a specific file | `Food-Ninja-Frontend/skills/code_map.md` — this vault does not duplicate file locations |
 
-## When this app is built
+## Current state in one paragraph
 
-Its own knowledge (screens, flows, rider-app-specific decisions, UX reviews) goes in
-[`../06-Rider-App/`](../06-Rider-App/) — mirroring how `../04-Customer-App/` and
-`../05-Web/` are organized for their respective apps. This MOC should then be
-expanded from a stub into a full map pointing into that folder.
+Riders log in by phone + OTP, go online, and receive a ringing notification when a shop they cover
+marks an order ready — **but only if that shop is in `BROADCAST` dispatch mode**; `MANUAL` shops
+never auto-notify anyone and rely on staff assigning a rider by hand (see
+[dispatch triggers](../06-Rider-App/dispatch-triggers.md)). Where it does apply, the notification
+goes to **every** eligible online rider at once and the first to accept wins, protected by a
+database constraint rather than application logic. The winner picks
+up, the customer is shown a 4-digit code, and the rider completes the delivery by entering that code
+plus the cash collected (a short payment is flagged, never blocked). Backend, web admin (riders +
+delivery zones), and rider-app screens are all built and committed — **except** the rider app itself
+is not yet in version control, and the customer-facing tracking map does not exist.
 
-## Relevant decisions
+## Immediate priorities
 
-These ADRs concern order lifecycle and delivery, and most plausibly carry over to the rider app
-once it exists. Not yet confirmed against real rider-app code — re-check each when the app is
-actually built.
+1. **Commit the rider app** — every file is untracked; one cleanup command destroys it.
+2. **Device-verify the loop** — nothing has run on a phone; treat "built" as unverified.
+3. **Fix the silent failures** — a PLATFORM shop in no zone does nothing at all, and
+   "all riders ignored it" is indistinguishable from "no riders online."
 
-- [Pre-Phase-1E Devil's Advocate Risk Review — Verdict & Blocking Punch List](../01-Architecture/decisions/ADR-0001-pre-phase-1e-devils-advocate-risk-review.md) — covers the Cart → Order flow, order status transitions, and delivery provider integration directly.
-- [Order / OrderLine Snapshot-Pricing Schema (Risk 6)](../01-Architecture/decisions/ADR-0002-order-orderline-snapshot-pricing-schema.md) — the order/order-line shape a rider app would read to know what to deliver.
-- [Order Placement Idempotency (Idempotency-Key Design, Risk 7)](../01-Architecture/decisions/ADR-0003-order-placement-idempotency.md) — idempotency pattern for order-lifecycle actions; likely relevant if rider status-update actions (accept/pickup/deliver) need the same protection.
-- [Restaurant vs Shop Entity Consolidation (Open Question, Risk 4)](../01-Architecture/decisions/ADR-0004-restaurant-vs-shop-entity-consolidation.md) — the shop entity is the rider's pickup location.
-- [Saved Delivery Addresses (Customer Address Book)](../01-Architecture/decisions/ADR-0008-saved-delivery-addresses.md) — the address book a rider app would read for the drop-off location.
-- [Pluggable OTP Auth (Backend Today, Firebase Now, MSG91 Later)](../01-Architecture/decisions/ADR-0009-pluggable-otp-auth.md) — riders will most likely authenticate through the same OTP infrastructure.
+## Rider-specific decisions
 
-Not linked as not plausibly relevant to a rider app: ADR-0005 (shop staff invites), ADR-0006
-(SHOP-role seller home), ADR-0007 (addon images), ADR-0010 (guest browsing — riders are
-authenticated staff, not anonymous browsers), ADR-0011 (cart quantity cap), ADR-0012 (dine-in
-captain ordering — no delivery leg).
+- [ADR-0013 — live tracking uses polling, not WebSocket](../01-Architecture/decisions/ADR-0013-rider-live-tracking-poll-not-websocket.md) — still correct; the objection to polling was database load, which caching removes.
+- [ADR-0014 — COD completion bundles the delivery code with cash, plus discrepancy control](../01-Architecture/decisions/ADR-0014-rider-cod-completion-cash-discrepancy-control.md) — the code proves arrival, **not** that the cash was right.
+- [ADR-0015 — one active on-duty device per rider](../01-Architecture/decisions/ADR-0015-rider-single-active-on-duty-device.md) — structured in the data model but not yet enforced.
+- [ADR-0016 — multi-client backend boundary](../01-Architecture/decisions/ADR-0016-multi-client-backend-boundary.md) — why rider endpoints are audience-prefixed.
+
+## Shared foundations this app inherits
+
+- [Backend contracts](../03-Backend/) — same API envelope, auth, and error shape as every client.
+- [Domain rules](../02-Domain/) — order lifecycle and delivery-address rules apply directly. The
+  backend owns all business logic; the app renders what the API returns.
+- [Architecture principles](../01-Architecture/principles.md) — read `[SHARED]` and `[FRONTEND]`.
+- [ADR-0009 — pluggable OTP auth](../01-Architecture/decisions/ADR-0009-pluggable-otp-auth.md) —
+  riders authenticate through the same OTP layer (dev provider: code is always `1234`).
+- [ADR-0008 — saved delivery addresses](../01-Architecture/decisions/ADR-0008-saved-delivery-addresses.md)
+  — note the address **book** is separate from the delivery-address snapshot taken on an order.
+
+## Business / market context
+
+`Ninjasu_Rider_App/agents/market/rider-dispatch-scout.md` — competitor benchmark, business-logic
+loopholes (unbounded cash exposure, unverified availability, unmasked customer numbers), and the GTM
+brief with internal demo red flags.
