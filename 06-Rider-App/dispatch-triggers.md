@@ -89,10 +89,13 @@ directly (`:116`, `:409`). Correct order:
 
 Rationale for the whole two-field design: [ADR-0019](../01-Architecture/decisions/ADR-0019-dispatch-mode-vs-delivery-mode.md).
 
-> Confirmed real-world instance, 2026-08-13: shop "Masala" is `MANUAL`. A full order walk to `READY`
+> Confirmed real-world instance, 2026-08-13: shop "Masala" was `MANUAL`. A full order walk to `READY`
 > produced no notification, correctly. Meanwhile Ninjasu_Web displayed **"1 rider online"** the whole
 > time — that indicator reflects rider duty status only and says nothing about whether a broadcast
 > can fire. Do not read it as dispatch health.
+>
+> **Masala has since been set to `BROADCAST`** (same day) so the loop is exercisable — it had never
+> been run end-to-end even once. Revert with `PUT /api/shops/{id}` `{"dispatchMode":"MANUAL"}`.
 
 ### Gate 3 — who counts as eligible (⚠️ two different pools exist)
 
