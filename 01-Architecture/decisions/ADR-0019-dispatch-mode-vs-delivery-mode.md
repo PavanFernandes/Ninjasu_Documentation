@@ -1,5 +1,7 @@
 ---
 id: ADR-0019
+title: "ADR-0019: `dispatchMode` split from `deliveryMode`"
+summary: "Split Shop.dispatchMode (MANUAL/BROADCAST) from deliveryMode (who is eligible) so a SELF-fleet shop can enable automatic rider broadcast without being forced into the shared platform-wide rider pool."
 type: decision
 status: accepted
 apps: [backend, rider, web]
@@ -93,8 +95,8 @@ ShopDetail, ShopSettings) and `Food-Ninja-Frontend` (shop-form) exposes the fiel
 (`messageHandlers.ts`/`pushSetup.ts`) handles the two new push types on a new `"delivery-updates"`
 channel, separate from the existing `"delivery-offers-urgent"` full-screen broadcast alarm.
 
-Related: [[ADR-0013-rider-live-tracking-poll-not-websocket]],
-[[ADR-0015-rider-single-active-on-duty-device]]. Full build/review trail: memory
+Related: [ADR-0013](ADR-0013-rider-live-tracking-poll-not-websocket.md),
+[ADR-0015](ADR-0015-rider-single-active-on-duty-device.md). Full build/review trail: memory
 `project_rider_assign_notification_plan`.
 
 **Status note (2026-08-06):** merged to `main` and deployed to production in all 4 repos on

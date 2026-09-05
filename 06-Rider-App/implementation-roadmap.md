@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Rider App — Implementation Roadmap"
+summary: "Phased DECIDE-vs-BUILD roadmap (Phase 0-7) for the rider app: device-verifying the dispatch loop, surfacing silent failures, push reliability, live tracking, and background location."
 type: how-to
 status: active
 apps: [rider, customer, web]
@@ -92,7 +94,7 @@ step 8 not appearing if statuses don't sync.
 assigning a rider by hand should make that rider's phone show a quiet notification
 (`DELIVERY_ASSIGNED`) and open the delivery screen; reassigning or cancelling should notify the
 rider who lost it (`DELIVERY_REVOKED`) on a separate, non-alarm channel from the broadcast ring in
-step 5. Neither has been observed on a real device. See [[ADR-0019-dispatch-mode-vs-delivery-mode]].
+step 5. Neither has been observed on a real device. See [ADR-0019](../01-Architecture/decisions/ADR-0019-dispatch-mode-vs-delivery-mode.md).
 
 ---
 

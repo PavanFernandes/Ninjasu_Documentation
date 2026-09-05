@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Tests Todo — Menu Category & Item Business Rules"
+summary: "Backend and frontend test cases still to be written to lock in category-nesting and item-category-assignment business rules so they cannot silently regress."
 type: reference
 status: active
 apps: [backend, customer, admin, rider]

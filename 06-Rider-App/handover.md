@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Ninjasu Rider App — Handover"
+summary: "Non-technical handover explaining what the rider app is, its end-to-end delivery flow, what is built vs not, key silent-failure risks, and locked decisions not to reopen."
 type: reference
 status: active
 apps: [rider]
@@ -16,7 +18,7 @@ updated: 2026-08-06
 # Ninjasu Rider App — Handover
 
 > ✅ **2026-08-06 — DELIVERY_ASSIGNED/REVOKED device-verified on a real phone, same day as
-> deploy.** [[ADR-0019-dispatch-mode-vs-delivery-mode]]'s assign/revoke push notifications were
+> deploy.** [ADR-0019](../01-Architecture/decisions/ADR-0019-dispatch-mode-vs-delivery-mode.md)'s assign/revoke push notifications were
 > confirmed working end-to-end (direct assign, direct cancel, AND the order-tab decline cascade —
 > the case that matters most) on a real Android device, watched directly by the account holder.
 > Live testing also found and fixed 2 real bugs same-day: a notification-channel registration gap
@@ -25,7 +27,7 @@ updated: 2026-08-06
 > **Still genuinely unverified: the full broadcast→accept path** — needs a `dispatchMode=BROADCAST`
 > shop with a zoned/online `PLATFORM`-type rider, which the test shop used this round (MANUAL/NONE)
 > couldn't exercise. That loop has never run on a real device across this feature's entire history.
-> Full trail: [[project_rider_assign_notification_plan]] (memory).
+> Full trail: `project_rider_assign_notification_plan` (memory — not a vault file).
 
 **Read this first.** It explains what the project is, how it works in plain language, what is
 already built, and what is not. It assumes no prior context.
@@ -242,11 +244,11 @@ wastes time.
 |---|---|
 | Where is the file that does X? | `Food-Ninja-Frontend/skills/code_map.md` |
 | What should I build next? | [implementation-roadmap.md](./implementation-roadmap.md) |
-| Why was this designed this way? | [`../01-Architecture/decisions/`](../01-Architecture/decisions/) — ADR-0013/0014/0015/0019 are the rider ones |
+| Why was this designed this way? | [Decisions index](../01-Architecture/decisions/README.md) — ADR-0013/0014/0015/0019 are the rider ones |
 | What are the known risks in detail? | [rider-dispatch-phase3-plan.md](./rider-dispatch-phase3-plan.md) §9 |
 | What did the competitor/business review find? | `Ninjasu_Rider_App/agents/market/rider-dispatch-scout.md` |
 | What rules apply to every app? | [`../01-Architecture/principles.md`](../01-Architecture/principles.md) |
-| How does the backend talk to apps? | [`../03-Backend/`](../03-Backend/) |
+| How does the backend talk to apps? | [`../03-Backend/auth-and-security.md`](../03-Backend/auth-and-security.md) |
 
 **House rules that matter on day one**
 - The backend is the only source of truth. Never re-implement a pricing, discount, or validation

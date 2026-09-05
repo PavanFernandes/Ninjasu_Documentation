@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Payment"
+summary: "Locked design (not yet built) for Razorpay online prepaid checkout: two-phase checkout/confirm state machines, the 7 load-bearing correctness conditions, pluggable per-shop settlement strategy, idempotency, and reconciliation."
 type: domain
 status: active
 apps: [backend, customer]
@@ -129,8 +131,8 @@ sets `refundedOn`.
 
 ### Settlement — pluggable per-shop strategy
 
-Mirrors the pluggable OTP-provider pattern (see
-[`project_otp_pluggable`](../../CLAUDE.md) memory / ADR-0009): a shop-level mode selects an
+Mirrors the pluggable OTP-provider pattern (see memory `project_otp_pluggable` /
+[ADR-0009](../01-Architecture/decisions/ADR-0009-pluggable-otp-auth.md)): a shop-level mode selects an
 injectable strategy, the service layer never branches on mode directly.
 
 ```java

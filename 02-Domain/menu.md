@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Menu Module"
+summary: "Defines menu category nesting, item availability flags, addon group scope (SHARED vs ITEM) and pricing/discount rules, combo constraints, and availability precedence for the menu fetch."
 type: domain
 status: active
 apps: [backend, customer, admin]

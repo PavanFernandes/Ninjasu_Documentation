@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Pending Flags"
+summary: "Phase-by-phase backlog of build work (auth, shop/menu, addon groups, home feed, cart, orders, combos) tracking which items have shipped and which are still pending."
 type: reference
 status: active
 apps: [backend, customer, admin, rider]

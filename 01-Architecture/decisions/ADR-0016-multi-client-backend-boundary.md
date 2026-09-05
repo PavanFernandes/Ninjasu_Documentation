@@ -1,5 +1,7 @@
 ---
 id: ADR-0016
+title: "ADR-0016: Multi-client backend — code by domain, API surface by audience"
+summary: "Organized the shared backend by domain (one audience-agnostic service per aggregate) while splitting the API surface by audience via prefixed adapter controllers and per-audience DTOs, rather than duplicating logic per client."
 type: decision
 status: accepted
 apps: [backend, web, rider, customer]
@@ -77,9 +79,9 @@ mandatory, all cheap now and expensive to retrofit:
 
 Principles §8 (admin `/api/admin/...` prefix + role/ownership), §14 (single source of truth), §15
 (role/ownership enforcement — the home for guardrail #4). Existing analog:
-[[ADR-0006-shop-role-app-area]] (the in-mobile seller area this web dashboard extends),
-[[ADR-0012-captain-ordering-dine-in-pos-kds]] (`/api/pos/...` already follows this shape). Web stack
-that sits on this boundary: [[ADR-0017-ninjasu-web-stack-and-auth]]. Memory:
+[ADR-0006](ADR-0006-shop-role-app-area.md) (the in-mobile seller area this web dashboard extends),
+[ADR-0012](ADR-0012-captain-ordering-dine-in-pos-kds.md) (`/api/pos/...` already follows this shape). Web stack
+that sits on this boundary: [ADR-0017](ADR-0017-ninjasu-web-stack-and-auth.md). Memory:
 `project_multi_client_backend`, `project_rider_app_plan`.
 
 ---

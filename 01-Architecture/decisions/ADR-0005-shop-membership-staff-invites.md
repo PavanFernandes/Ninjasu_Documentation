@@ -1,5 +1,7 @@
 ---
 id: ADR-0005
+title: "ADR-0005: Shop Membership (user_shops) + Staff Invites (shop_invites)"
+summary: "Replaced Shop.ownerId with a user_shops membership table (OWNER/MANAGER/STAFF) plus phone-keyed shop_invites, so each staff member logs in with their own OTP and access is granted only with explicit consent."
 type: decision
 status: accepted
 apps: ["backend", "customer"]

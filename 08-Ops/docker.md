@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Docker Setup (Backend on EC2)"
+summary: "Operational runbook for the backend Docker container on EC2 — checking status/logs, start/stop/restart, Elastic IP behavior on reboot, and the redeploy command sequence."
 type: how-to
 status: active
 apps: [backend, customer, admin, rider]

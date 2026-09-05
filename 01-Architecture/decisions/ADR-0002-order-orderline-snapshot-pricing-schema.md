@@ -1,5 +1,7 @@
 ---
 id: ADR-0002
+title: "ADR-0002: Order / OrderLine Snapshot-Pricing Schema (Risk 6)"
+summary: "Order/OrderLine/OrderLineAddon snapshot item name, price, MRP, and discount at order time instead of joining live addon/item prices, so order history never changes when shop prices change later."
 type: decision
 status: accepted
 apps: ["backend","customer"]

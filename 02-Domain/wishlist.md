@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Wishlist Module — Business Rules & Logic"
+summary: "Defines the wishlist as one cross-shop, item-level save/unsave list: idempotent add/remove, optimistic client toggle, price-parity with the home feed, availability display, and add-to-cart routing rules."
 type: domain
 status: active
 apps: [backend, customer]

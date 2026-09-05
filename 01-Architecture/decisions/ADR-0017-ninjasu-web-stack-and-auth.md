@@ -1,5 +1,7 @@
 ---
 id: ADR-0017
+title: "ADR-0017: Ninjasu_Web stack (Next.js) + BFF cookie auth"
+summary: "Chose Next.js (App Router) with Tailwind/shadcn for the new web app, plus a BFF cookie-based auth proxy that keeps the JWT in an httpOnly cookie server-side instead of exposing it to browser JS as on mobile."
 type: decision
 status: accepted
 apps: [web, backend]
@@ -16,7 +18,7 @@ updated: 2026-07-17
 `Ninjasu_Web` is the platform's greenfield web client — one repo, four route-grouped audiences:
 Ninjasu-team admin + shop/restaurant dashboard (built first), a public marketing site, and guest
 QR-ordering (backlog). It is the desktop counterpart to the mobile `Food-Ninja-Frontend`, on the
-same shared backend (see [[ADR-0016-multi-client-backend-boundary]]).
+same shared backend (see [ADR-0016](ADR-0016-multi-client-backend-boundary.md)).
 
 Two things forced explicit decisions:
 - **Framework:** reusing the Expo app via react-native-web was rejected (principle 8: zero shared
@@ -71,9 +73,9 @@ Supporting decisions:
 
 ## Enforced in
 
-Backend boundary this sits on: [[ADR-0016-multi-client-backend-boundary]]. Principle 8 (web primary,
-mobile minimal; admin role/ownership). App map: [[Web-App-MOC]]. Existing auth context:
-[[ADR-0009-pluggable-otp-auth]], [[ADR-0010-guest-browsing-gate-at-add-to-cart]]. Full phased build
+Backend boundary this sits on: [ADR-0016](ADR-0016-multi-client-backend-boundary.md). Principle 8 (web primary,
+mobile minimal; admin role/ownership). App map: [Web-App-MOC](../../00-Maps/Web-App-MOC.md). Existing auth context:
+[ADR-0009](ADR-0009-pluggable-otp-auth.md), [ADR-0010](ADR-0010-guest-browsing-gate-at-add-to-cart.md). Full phased build
 plan + gap solutions: memory `project_ninjasu_web_plan`.
 
 ---

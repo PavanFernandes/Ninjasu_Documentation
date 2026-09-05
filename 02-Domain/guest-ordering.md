@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Guest QR ordering — table-session approval"
+summary: "Describes the QR-scan guest ordering flow: per-table-session staff approval instead of per-order OTP, join codes for multiple devices, session persistence/reconnect handling, and known unbuilt gaps."
 type: domain
 status: active
 apps: [backend, web]

@@ -1,5 +1,7 @@
 ---
 id: ADR-0015
+title: "ADR-0015: One active on-duty device per rider, claimed on Go Online"
+summary: "Only the device that most recently tapped Go Online is a rider's active on-duty device, gating location posting, assignment acceptance, and delivery completion to prevent GPS ping-pong, double-completion, and accomplice-phone spoofing."
 type: decision
 status: accepted
 apps: [rider, backend]
@@ -52,8 +54,8 @@ Real driver/delivery apps do not allow dispatch on two devices at once.
 ## Enforced in
 
 To build: `riders.active_device_id`; Go-Online handler (stamp + push-offline prior device); duty
-guard on location/accept/complete endpoints. Related: [[ADR-0013-rider-live-tracking-poll-not-websocket]],
-[[ADR-0014-rider-cod-completion-cash-discrepancy-control]], DeviceToken (push infra).
+guard on location/accept/complete endpoints. Related: [ADR-0013](ADR-0013-rider-live-tracking-poll-not-websocket.md),
+[ADR-0014](ADR-0014-rider-cod-completion-cash-discrepancy-control.md), DeviceToken (push infra).
 
 ---
 *Immutable once accepted. If this decision changes, write a new ADR and mark this one `status: superseded` with a link forward.*

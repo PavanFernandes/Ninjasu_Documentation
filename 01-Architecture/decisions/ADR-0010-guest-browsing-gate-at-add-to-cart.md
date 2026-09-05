@@ -1,5 +1,7 @@
 ---
 id: ADR-0010
+title: "ADR-0010: Guest Browsing (\"Skip for Now\") with Gate at Add-to-Cart (Option A)"
+summary: "Chose to let guests browse the full storefront freely and gate only at the moment of add-to-cart or wishlist (Option A), avoiding a second client-side guest cart that would need merging into the real cart on login."
 type: decision
 status: accepted
 apps: ["backend", "customer"]

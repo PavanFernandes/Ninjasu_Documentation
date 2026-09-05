@@ -1,5 +1,7 @@
 ---
 id: ADR-0001
+title: "ADR-0001: Pre-Phase-1E Devil's Advocate Risk Review — Verdict & Blocking Punch List"
+summary: "Devil's-advocate review before Phase 1E (Orders) verdicted proceed-with-conditions, gating design/code/ship on a staged punch list covering the order snapshot schema, idempotency, and Restaurant/Shop ambiguity."
 type: decision
 status: accepted
 apps: ["backend", "customer"]

@@ -1,5 +1,7 @@
 ---
 id: ADR-0008
+title: "ADR-0008: Saved Delivery Addresses (Customer Address Book)"
+summary: "Built a server-backed, DPDP-compliant saved-address book fully decoupled from the order's own delivery_* snapshot, so deleting a saved address can never corrupt past order history."
 type: decision
 status: accepted
 apps: ["backend","customer"]

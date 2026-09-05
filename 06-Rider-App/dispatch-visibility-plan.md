@@ -1,3 +1,18 @@
+---
+id: ""
+title: "Dispatch Visibility — plan"
+summary: "Plan to make every silent dispatch-notification gate a visible order state, after a live test found a rider notification never fired with no surface explaining why."
+type: how-to
+status: designing
+apps: [rider, backend, web]
+module: "rider"
+anchors:
+  - { repo: "ninja delivery service java", path: "src/main/java/com/example/ninja/listener/DeliveryDispatchListener.java" }
+  - { repo: "Ninjasu_Rider_App", path: "usePushRegistration.ts" }
+verified_against: ""
+updated: 2026-08-13
+---
+
 # Dispatch Visibility — plan
 
 Status: **PLAN / not started.** Written 2026-08-13.
@@ -5,7 +20,7 @@ Trigger: a live test where a rider logged in on a new phone, staff marched the o
 stage, and no notification ever arrived — with no surface anywhere explaining why, or even at what
 stage one was supposed to fire.
 
-Related: [[project_rider_dispatch_plan]], [[project_rider_assign_notification_plan]],
+Related: memory `project_rider_dispatch_plan`, memory `project_rider_assign_notification_plan`,
 `Ninjasu_Documentation/06-Rider-App/rider-dispatch-phase3-plan.md`.
 
 ---
@@ -27,7 +42,7 @@ online, how correct the app is, or how many phones are logged in.
 The trap is sharper than "it was misconfigured": the web app was showing **"1 rider online"** the
 whole time. That indicator reads as dispatch health but has no relationship to whether a broadcast
 can or did fire — the exact riders-online-vs-nobody-notified ambiguity flagged as a top unresolved
-risk in [[project_rider_dispatch_plan]] §9, now observed for real.
+risk in memory `project_rider_dispatch_plan` §9, now observed for real.
 
 **And branch 2 logs nothing at all** (see §3) — so this cause is invisible even in server logs.
 
@@ -80,7 +95,7 @@ order sitting at READY, silence:
 5. No `device_tokens` rows for eligible riders ← **Cause 2 lands here**
 6. FCM send fails, or the device drops it (permission, unregistered channel, stale token)
 
-Gate 6 has further teeth: per [[project_rider_assign_notification_plan]] the notification-channel
+Gate 6 has further teeth: per memory `project_rider_assign_notification_plan` the notification-channel
 fix is merged but **not in any distributed build** (no OTA), so a freshly installed app is a suspect
 for its own separate reason.
 
@@ -166,7 +181,7 @@ push received at?, plus **"Send me a test notification"**. This is what would ha
 new phone even registered?" in five seconds instead of a whole evening.
 
 ⚠️ A1/A2 reach a real device only via a full EAS build (no OTA configured) — **ask before spending
-EAS credits** ([[feedback_ask_before_eas_build]]).
+EAS credits** (memory `feedback_ask_before_eas_build`).
 
 **A3. Backend log fixes (cheap, independent).** Log branches 1 and 2. Make `:111` report actual
 send results instead of asserting success. Carry `orderId`/`shopId` into the FCM per-token logs.
@@ -233,7 +248,7 @@ So the DA question narrows to: **new `order_dispatch_events` table** (keyed `ord
 
 ⚠️ **Framing constraint:** the original design *deliberately rejected* an offer table (no `OFFERED`
 status, no nullable `rider_id`) to avoid the implicit-filter trap. This is **append-only
-observability that no dispatch logic ever reads** — same shape as [[feedback_kot_append_not_mutable]].
+observability that no dispatch logic ever reads** — same shape as memory `feedback_kot_append_not_mutable`.
 That distinction must be explicit in the DA and in the table's code comment, or a future session
 will mistake it for the thing that was cut.
 
@@ -281,7 +296,7 @@ actions. **Where does a 9th element go without becoming noise?** Specifically:
 - should the READY column sub-group into waiting-for-rider vs rider-assigned?
 
 Then `/ui-engineer` builds it (standing rule for Ninjasu_Web), reusing shared components and
-defining all props upfront ([[feedback_shared_component_props_upfront]]).
+defining all props upfront (memory `feedback_shared_component_props_upfront`).
 
 ---
 

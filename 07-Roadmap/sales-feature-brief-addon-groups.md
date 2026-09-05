@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Shared Addon Groups — Feature Brief"
+summary: "Sales feature brief pitching Shared Addon Groups as a time-saving differentiator versus Swiggy/Zomato's per-item-only modifier model, with demo script and pricing positioning."
 type: reference
 status: active
 apps: [backend, customer, admin]

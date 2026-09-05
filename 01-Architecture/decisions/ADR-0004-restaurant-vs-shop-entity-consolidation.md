@@ -1,5 +1,7 @@
 ---
 id: ADR-0004
+title: "ADR-0004: Restaurant vs Shop Entity Consolidation (Open Question, Risk 4)"
+summary: "Shop remains the single cross-domain entity; Restaurant becomes a 1:1 vertical-extension table read and written exclusively through ShopService, avoiding a fork between two entities for order/menu references."
 type: decision
 status: accepted
 apps: ["backend"]

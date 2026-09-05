@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Captain Ordering — GTM / Sales Brief"
+summary: "Sales brief for the dine-in POS + Kitchen Display feature: pitch, demo script, onboarding impact, likely objections, and internal red flags to know before demoing."
 type: reference
 status: active
 apps: [backend, customer, admin]

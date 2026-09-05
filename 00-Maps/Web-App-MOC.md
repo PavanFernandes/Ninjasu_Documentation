@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Ninjasu Web — Map of Content"
+summary: "Hub note for Ninjasu_Web (admin, shop, marketing, guest QR-ordering) and the shared backend/domain docs it sits on."
 type: reference
 status: active
 apps: [web]
@@ -43,10 +45,10 @@ Ninjasu_Web is a new client on top of the **same shared backend** every other ap
 uses — it does not get its own domain rules or its own architecture. Read these first, before
 designing anything web-specific:
 
-- [Shared backend](../03-Backend/) — API contracts, auth, data model. Same envelope, same JWT
+- [Shared backend](../03-Backend/auth-and-security.md) — API contracts, auth, data model. Same envelope, same JWT
   auth, same endpoints (extended with `/api/admin/...` and `/api/pos/...`-scoped ones as needed) as
   the customer app and rider app use.
-- [Shared domain rules](../02-Domain/) — menu, cart, wishlist, core, captain-ordering. These are
+- [Shared domain rules](../02-Domain/README.md) — menu, cart, wishlist, core, captain-ordering. These are
   true for every client; the web app renders and manages against them, it does not
   reinvent them.
 - [Shared architecture principles](../01-Architecture/principles.md) — read the `[SHARED]` tagged
@@ -63,7 +65,7 @@ Existing ADRs whose subject matter this app sits directly on top of:
 
 - [Order / OrderLine Snapshot-Pricing Schema (Risk 6)](../01-Architecture/decisions/ADR-0002-order-orderline-snapshot-pricing-schema.md) — order/sales data the dashboard will need to read and display correctly.
 - [Restaurant vs Shop Entity Consolidation (Open Question, Risk 4)](../01-Architecture/decisions/ADR-0004-restaurant-vs-shop-entity-consolidation.md) — the Shop entity is what this app manages.
-- [Shop Membership (user_shops) + Staff Invites (shop_invites)](../01-Architecture/decisions/ADR-0005-shop-membership-and-staff-invites.md) — the access/staffing model this app's own permissions will likely be built on.
+- [Shop Membership (user_shops) + Staff Invites (shop_invites)](../01-Architecture/decisions/ADR-0005-shop-membership-staff-invites.md) — the access/staffing model this app's own permissions will likely be built on.
 - [SHOP Role App Area (Seller Home)](../01-Architecture/decisions/ADR-0006-shop-role-app-area.md) — the existing in-customer-app seller area; closest current analog to what this dashboard replaces or complements.
 - [Per-Option Images for Shared Addons](../01-Architecture/decisions/ADR-0007-per-option-images-shared-addons.md) — menu/addon management is admin-facing work.
 - [Captain Ordering (Dine-In POS + KDS) — Append-KOT-Under-Check Architecture](../01-Architecture/decisions/ADR-0012-captain-ordering-dine-in-pos-kds.md) — dine-in POS + KDS is shop-staff-facing; this dashboard is a natural home for its management/reporting surface.
@@ -71,7 +73,7 @@ Existing ADRs whose subject matter this app sits directly on top of:
 ## When this app is built
 
 Once the `Ninjasu_Web` repo has real code, its own knowledge — screens,
-flows, UX reviews, app-specific decisions — goes in [`../05-Web/`](../05-Web/).
+flows, UX reviews, app-specific decisions — goes in `../05-Web/` (not yet created).
 This MOC should then be expanded the way [`Customer-App-MOC.md`](Customer-App-MOC.md) and
 [`Rider-App-MOC.md`](Rider-App-MOC.md) are structured, with anchors pointing at real files in that
 repo.

@@ -1,5 +1,7 @@
 ---
 id: ADR-0009
+title: "ADR-0009: Pluggable OTP Auth (Backend Today, Firebase Now, MSG91 Later)"
+summary: "Introduced an OtpProvider strategy on both frontend and backend so login can switch between the existing backend OTP, Firebase phone auth, and a later MSG91 provider via config rather than a rewrite."
 type: decision
 status: accepted
 apps: ["backend","customer"]

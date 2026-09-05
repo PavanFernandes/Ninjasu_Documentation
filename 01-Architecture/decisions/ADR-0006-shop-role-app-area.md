@@ -1,5 +1,7 @@
 ---
 id: ADR-0006
+title: "ADR-0006: SHOP Role App Area (Seller Home)"
+summary: "Introduced a dedicated (shop) tab navigator (Orders/My Shop/Profile) for the SHOP role, replacing a fallback into the customer app and reusing the admin's shop-detail component for both surfaces."
 type: decision
 status: accepted
 apps: ["backend", "customer"]

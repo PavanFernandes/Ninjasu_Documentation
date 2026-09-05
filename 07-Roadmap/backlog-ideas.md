@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Backlog Ideas — Food Ninja"
+summary: "Ten prioritized feature ideas (promos, scheduled orders, nested modifiers, reorder diff, discount tagging, subscriptions, etc.) grounded in competitor analysis, plus a priority matrix."
 type: reference
 status: active
 apps: [backend, customer, admin]

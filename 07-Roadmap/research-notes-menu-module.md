@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Innovation Research — Menu Module"
+summary: "Competitor comparison of addon-group models (Swiggy, Zomato, Deliveroo, DoorDash) against Food Ninja's, identifying genuine differentiators and gaps to feed the backlog."
 type: reference
 status: active
 apps: [backend, customer, admin]

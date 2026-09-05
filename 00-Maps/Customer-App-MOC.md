@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Customer App — Map of Content"
+summary: "Hub note for Food-Ninja-Frontend, linking to the domain rules, backend contracts, UX reviews, and ADRs relevant to the customer app."
 type: reference
 status: active
 apps: [customer]
@@ -53,7 +55,7 @@ Directly shapes customer-app behavior:
 Backend-infra-adjacent, still linked for completeness:
 
 - [Restaurant vs Shop Entity Consolidation (Open Question, Risk 4)](../01-Architecture/decisions/ADR-0004-restaurant-vs-shop-entity-consolidation.md)
-- [Shop Membership (user_shops) + Staff Invites (shop_invites)](../01-Architecture/decisions/ADR-0005-shop-membership-and-staff-invites.md)
+- [Shop Membership (user_shops) + Staff Invites (shop_invites)](../01-Architecture/decisions/ADR-0005-shop-membership-staff-invites.md)
 - [SHOP Role App Area (Seller Home)](../01-Architecture/decisions/ADR-0006-shop-role-app-area.md)
 
 ## Architecture

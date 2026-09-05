@@ -1,5 +1,7 @@
 ---
 id: ADR-0007
+title: "ADR-0007: Per-Option Images for Shared Addons"
+summary: "Added a nullable image_url column to every addon row (not just shared ones) so each shared-addon option can carry its own thumbnail, matching the Swiggy/Zomato per-option image pattern."
 type: decision
 status: accepted
 apps: ["backend","customer"]

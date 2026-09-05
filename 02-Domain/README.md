@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Domain — Shared Business Logic"
+summary: "Index and entry point for the cross-repo domain folder, listing which module doc (core, menu, cart, wishlist, captain-ordering) covers which shared business rule."
 type: reference
 status: active
 apps: [backend, customer, admin, rider]

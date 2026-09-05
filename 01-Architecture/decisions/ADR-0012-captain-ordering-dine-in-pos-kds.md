@@ -1,5 +1,7 @@
 ---
 id: ADR-0012
+title: "ADR-0012: Captain Ordering (Dine-In POS + KDS) — Append-KOT-Under-Check Architecture"
+summary: "Modeled dine-in tables as a mutable Check container holding immutable KOTs, reusing the existing Order/OrderLine schema via an order_type discriminator, so a fired kitchen ticket can never be edited mid-cook — only voided and refired."
 type: decision
 status: accepted
 apps: ["backend", "customer"]

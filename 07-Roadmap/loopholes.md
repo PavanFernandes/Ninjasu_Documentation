@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Business Logic Loopholes — Food Ninja"
+summary: "Eight documented loopholes (L1-L8) where the menu/addon system technically passes validation but violates business intent, each with severity, scenario, and required fix."
 type: reference
 status: active
 apps: [backend, customer, admin]

@@ -1,5 +1,7 @@
 ---
 id: ADR-0014
+title: "ADR-0014: Rider COD completion bundles OTP + cash, with a cash-discrepancy control"
+summary: "COD delivery completion keeps bundled OTP+cash and the complete-then-flag short-pay path, but adds a customer-visible recorded amount, a discrepancy cap with mandatory reason, and per-rider monitoring to prevent a self-authorizing cash skim."
 type: decision
 status: accepted
 apps: [rider, customer, backend]
@@ -53,7 +55,7 @@ Schema: `delivery_cash_collections` stores `amount_expected` + `amount_collected
 
 To build: delivery completion endpoint (OTP + cash, ownership-enforced), `delivery_cash_collections`
 schema, customer order-view amount display, staff reconciliation view. Related:
-[[ADR-0009-pluggable-otp-auth]], principles.md #15 (production hardening — ownership enforcement).
+[ADR-0009](ADR-0009-pluggable-otp-auth.md), principles.md #15 (production hardening — ownership enforcement).
 
 ---
 *Immutable once accepted. If this decision changes, write a new ADR and mark this one `status: superseded` with a link forward.*

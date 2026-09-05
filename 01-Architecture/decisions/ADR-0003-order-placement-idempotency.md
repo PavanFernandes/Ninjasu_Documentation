@@ -1,5 +1,7 @@
 ---
 id: ADR-0003
+title: "ADR-0003: Order Placement Idempotency (Idempotency-Key Design, Risk 7)"
+summary: "POST /api/orders accepts an Idempotency-Key header stored uniquely on the Order row itself, so a double-tap or network retry returns the existing order instead of creating a duplicate."
 type: decision
 status: accepted
 apps: ["backend","customer"]

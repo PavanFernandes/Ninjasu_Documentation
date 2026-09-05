@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Food Ninja — Restaurant Owner Onboarding Audit"
+summary: "GTM audit of the download-to-first-item-live onboarding flow, finding the 20-minute target unachievable (actual 45-75 min) and ranking friction points by severity with fix effort."
 type: reference
 status: active
 apps: [backend, customer, admin]

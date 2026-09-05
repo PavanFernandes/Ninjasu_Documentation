@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Maintenance Guide"
+summary: "Explains how this doc vault stays trustworthy: the ownership split versus per-repo code_map, named drift triggers, and the /sweep anchor-verification mechanism."
 type: reference
 status: active
 apps: [backend, customer, admin, rider]

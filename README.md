@@ -1,3 +1,16 @@
+---
+id: ""
+title: "Ninjasu Documentation Vault"
+summary: "The vault's own README — why it exists, the living-docs-vs-ADR layering, how to use and add to it, and the ten rules it runs on."
+type: reference
+status: active
+apps: [backend, customer, admin, rider, web]
+module: "meta"
+anchors: []
+verified_against: ""
+updated: 2026-09-05
+---
+
 # Ninjasu Documentation Vault
 
 This is the **canonical knowledge source** for the Ninjasu platform: one shared backend

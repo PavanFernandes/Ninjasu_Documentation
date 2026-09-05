@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Daily Stock Ledger (\"Prep Assistant\") — Design"
+summary: "Design for a per-item stock ledger (DAILY/ONE_TIME modes) that journals stock periods instead of overwriting a counter, covering decrement, reset, and sold-out display strategy."
 type: how-to
 status: designing
 apps: [backend, admin]

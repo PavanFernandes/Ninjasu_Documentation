@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Auth & Security"
+summary: "Living security review record for the Firebase OTP login/exists endpoints and guest-browsing public reads, tracking fixed issues, accepted trade-offs, and open pre-launch findings."
 type: reference
 status: active
 apps: [backend, customer]

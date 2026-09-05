@@ -1,5 +1,7 @@
 ---
 id: ADR-0011
+title: "ADR-0011: Cart Per-Line Quantity Cap = 25"
+summary: "Set a per-line cart quantity cap of 25, enforced on the resulting combined quantity rather than just the incoming request, to close a bypass where repeated adds could stack past the limit."
 type: decision
 status: accepted
 apps: ["backend", "customer"]

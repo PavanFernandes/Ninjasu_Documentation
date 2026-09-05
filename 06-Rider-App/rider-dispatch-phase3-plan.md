@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Rider App — Phase 3 Plan (Rider ID, Zones, Missions, Live Tracking, Standalone)"
+summary: "Technical audit of the rider app's actual build status plus findings and phasing on rider IDs, zones, dispatch reliability risks, Neon-optimized live tracking, and standalone feasibility."
 type: how-to
 status: active
 apps: [rider, customer, web]

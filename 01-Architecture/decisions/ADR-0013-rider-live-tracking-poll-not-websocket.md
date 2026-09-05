@@ -1,5 +1,7 @@
 ---
 id: ADR-0013
+title: "ADR-0013: Rider live GPS tracking uses REST + polling + client-side interpolation, not WebSocket"
+summary: "Rider live GPS tracking uses REST polling plus client-side marker interpolation instead of WebSocket, since interpolation — not the transport — produces the smooth pin, keeping the write path transport-agnostic for later."
 type: decision
 status: accepted
 apps: [rider, customer, backend]
@@ -57,7 +59,7 @@ Implement rider live tracking **within Principle 12**:
 ## Enforced in
 
 To build: `RiderController.postLocation`, `DeliveryController.getLocation` (backend); rider-app
-location-tracking hook (poll + reanimated interpolation). Related: [[ADR-0009-pluggable-otp-auth]],
+location-tracking hook (poll + reanimated interpolation). Related: [ADR-0009](ADR-0009-pluggable-otp-auth.md),
 principles.md #12, #20.
 
 ---

@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Rider App — Map of Content"
+summary: "Hub note for Ninjasu_Rider_App — build/verification status, where to debug dispatch notifications, and rider-specific ADRs."
 type: reference
 status: active
 apps: [rider]
@@ -59,8 +61,8 @@ is not yet in version control, and the customer-facing tracking map does not exi
 
 ## Shared foundations this app inherits
 
-- [Backend contracts](../03-Backend/) — same API envelope, auth, and error shape as every client.
-- [Domain rules](../02-Domain/) — order lifecycle and delivery-address rules apply directly. The
+- [Backend contracts](../03-Backend/auth-and-security.md) — same API envelope, auth, and error shape as every client.
+- [Domain rules](../02-Domain/README.md) — order lifecycle and delivery-address rules apply directly. The
   backend owns all business logic; the app renders what the API returns.
 - [Architecture principles](../01-Architecture/principles.md) — read `[SHARED]` and `[FRONTEND]`.
 - [ADR-0009 — pluggable OTP auth](../01-Architecture/decisions/ADR-0009-pluggable-otp-auth.md) —

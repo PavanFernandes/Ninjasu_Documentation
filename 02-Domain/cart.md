@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Cart"
+summary: "Defines cart session lifecycle, multi-vertical cart_type rules, snapshot-at-add pricing and validation, cart_key line identity, quantity caps, idempotency, and cart API endpoints."
 type: domain
 status: active
 apps: [backend, customer]

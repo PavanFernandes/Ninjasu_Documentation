@@ -1,5 +1,7 @@
 ---
 id: ADR-0018
+title: "ADR-0018: Razorpay Online Payment — Two-Phase Checkout/Confirm + Pluggable Settlement"
+summary: "Online payment uses a two-phase checkout/confirm flow with stock decremented only at confirm and a CAS-guarded confirmPayment reachable by both client-verify and webhook, plus a pluggable per-shop settlement strategy, leaving COD untouched."
 type: decision
 status: accepted
 apps: ["backend", "customer"]
@@ -20,7 +22,7 @@ and "money actually captured," and that gap must not corrupt inventory, duplicat
 notifications, or leave orders in limbo if the customer's network dies mid-payment.
 
 KOT / dine-in / takeaway are explicitly **out of scope** — they settle via
-`table_checks.payment_mode` at the counter ([[ADR-0012-captain-ordering-dine-in-pos-kds]]); the
+`table_checks.payment_mode` at the counter ([ADR-0012](ADR-0012-captain-ordering-dine-in-pos-kds.md)); the
 two money paths never overlap and this ADR does not touch that flow.
 
 Three things forced explicit decisions:
@@ -74,7 +76,7 @@ money-mutating logic in two call sites (the failure mode that duplication invite
 paths silently drifting on stock/notification behavior).
 
 **Settlement is a per-shop pluggable strategy** (`SettlementStrategy`, mirroring the existing
-pluggable-OTP-provider pattern — [[ADR-0009-pluggable-otp-auth]]): `SINGLE_MERCHANT` is the
+pluggable-OTP-provider pattern — [ADR-0009](ADR-0009-pluggable-otp-auth.md)): `SINGLE_MERCHANT` is the
 default for every shop (`shop.settlement_mode IS NULL` resolves to it, so no migration is
 needed for existing rows); `ROUTE_SPLIT` is opt-in per shop once it has a linked Razorpay
 account. The strategy only contributes JSON parameters (`transfers[]` on order-create,
@@ -149,10 +151,10 @@ devil's-advocate / api-contracts / market review passes on 2026-07-18. Full phas
 controller, RN `RazorpayCheckoutSheet`, the full read-audit of ghost-status exclusions, and the
 13-scenario failure-matrix test plan) lives at
 `Food-Ninja-Frontend/skills/agents/arch-notes/razorpay-payment-FINAL.md`. Related context:
-[[ADR-0002-order-orderline-snapshot-pricing-schema]] (order/cart shapes this extends),
-[[ADR-0003-order-placement-idempotency]] (idempotency-key precedent this reuses),
-[[ADR-0009-pluggable-otp-auth]] (the pluggable-provider pattern settlement strategy mirrors),
-[[ADR-0012-captain-ordering-dine-in-pos-kds]] (the separate money path this does not touch).
+[ADR-0002](ADR-0002-order-orderline-snapshot-pricing-schema.md) (order/cart shapes this extends),
+[ADR-0003](ADR-0003-order-placement-idempotency.md) (idempotency-key precedent this reuses),
+[ADR-0009](ADR-0009-pluggable-otp-auth.md) (the pluggable-provider pattern settlement strategy mirrors),
+[ADR-0012](ADR-0012-captain-ordering-dine-in-pos-kds.md) (the separate money path this does not touch).
 Memory: `project_razorpay_payment`.
 
 ---

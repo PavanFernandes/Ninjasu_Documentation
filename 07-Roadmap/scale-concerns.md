@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Food Ninja — Business Scale Concerns"
+summary: "Rates each open technical conflict and hardening gap (OTP, DB credentials, ownership checks, JWT secret, ddl-auto, rate limiting) by business impact rather than technical complexity."
 type: reference
 status: active
 apps: [backend, customer, admin]

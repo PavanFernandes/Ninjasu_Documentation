@@ -1,3 +1,20 @@
+---
+id: ""
+title: "When does a rider get notified?"
+summary: "Canonical six-gate decision table for rider dispatch notifications — walk it top-down to find why a specific order produced no notification."
+type: reference
+status: active
+apps: [rider, backend]
+module: "rider"
+anchors:
+  - { repo: "ninja delivery service java", path: "src/main/java/com/example/ninja/listener/DeliveryDispatchListener.java" }
+  - { repo: "ninja delivery service java", path: "src/main/java/com/example/ninja/listener/DeliveryRiderNotificationListener.java" }
+  - { repo: "ninja delivery service java", path: "src/main/java/com/example/ninja/service/impl/RiderServiceImpl.java" }
+  - { repo: "Ninjasu_Rider_App", path: "usePushRegistration.ts" }
+verified_against: ""
+updated: 2026-08-13
+---
+
 # When does a rider get notified?
 
 **The canonical answer.** If you are debugging "the rider got nothing", start here and walk §3

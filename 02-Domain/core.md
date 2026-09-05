@@ -1,5 +1,7 @@
 ---
 id: ""
+title: "Core — Cross-Cutting Business Rules"
+summary: "Cross-cutting rules shared by every module: API response envelope, auth/JWT ownership, UUID identifiers, money-as-paise, discount precedence, snapshot pricing, validation boundaries, time, soft delete, and idempotency."
 type: domain
 status: active
 apps: [backend, customer, admin, rider]
