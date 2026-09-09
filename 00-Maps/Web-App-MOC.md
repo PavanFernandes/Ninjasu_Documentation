@@ -8,7 +8,7 @@ apps: [web]
 module: "meta"
 anchors: []
 verified_against: ""
-updated: 2026-07-17
+updated: 2026-09-09
 ---
 
 # Ninjasu Web — Map of Content
@@ -70,10 +70,16 @@ Existing ADRs whose subject matter this app sits directly on top of:
 - [Per-Option Images for Shared Addons](../01-Architecture/decisions/ADR-0007-per-option-images-shared-addons.md) — menu/addon management is admin-facing work.
 - [Captain Ordering (Dine-In POS + KDS) — Append-KOT-Under-Check Architecture](../01-Architecture/decisions/ADR-0012-captain-ordering-dine-in-pos-kds.md) — dine-in POS + KDS is shop-staff-facing; this dashboard is a natural home for its management/reporting surface.
 
-## When this app is built
+## App-specific knowledge
 
-Once the `Ninjasu_Web` repo has real code, its own knowledge — screens,
-flows, UX reviews, app-specific decisions — goes in `../05-Web/` (not yet created).
-This MOC should then be expanded the way [`Customer-App-MOC.md`](Customer-App-MOC.md) and
+`Ninjasu_Web` now has substantial real code (Floor Map, Purchases, guest QR ordering + background
+templates, Dine-In/Captain Ordering web counterpart). Its own screens, flows, UX reviews, and
+app-specific decisions go in [`../05-Web/`](../05-Web/):
+
+- [App Shell & Scroll Ownership](../05-Web/layout-shell.md) — how `AppShell` owns page scrolling
+  (single scroll container), and the double/triple-scroll failure mode to check for first when a
+  page reports "multiple scrollbars"
+
+This MOC should keep expanding the way [`Customer-App-MOC.md`](Customer-App-MOC.md) and
 [`Rider-App-MOC.md`](Rider-App-MOC.md) are structured, with anchors pointing at real files in that
 repo.

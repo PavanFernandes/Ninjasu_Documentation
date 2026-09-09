@@ -18,8 +18,16 @@ the root [README.md](../README.md)'s recording table: a feature still being desi
 from `90-Meta/templates/feature-template.md` with `status: designing`, and promotes its decided
 parts into an ADR once locked.
 
+**`status: vision` precedes `designing`.** A vision doc records *why* and *what for* — the reasoning,
+constraints and decisions already taken — but is not scoped to build. Promote it to `designing` (and
+the feature template) when the build is actually picked up, so a session can resume from the thinking
+instead of re-deriving it.
+
 | Doc | What it covers |
 |---|---|
+| [vision-inventory-module.md](vision-inventory-module.md) | **Designing** — Raw-Material Inventory: purchase capture, grocery-list loop, data model, 14 DA conditions, phases. Build gated on POS cohort |
+| [vision-spatial-table-view.md](vision-spatial-table-view.md) | **Vision** — Spatial Table View / floor map |
+| [pricing-and-positioning.md](pricing-and-positioning.md) | POS pricing verdict, positioning, deferred directions |
 | [backlog-ideas.md](backlog-ideas.md) | Backlog Ideas — Food Ninja |
 | [loopholes.md](loopholes.md) | Business Logic Loopholes — Food Ninja |
 | [pending-flags.md](pending-flags.md) | Pending Flags |
