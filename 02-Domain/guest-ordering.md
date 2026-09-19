@@ -85,12 +85,13 @@ again" state with a manual retry instead of silently discarding the session.
 
 ## Closed-table handoff
 
-`GET /api/guest/check` remains readable for a valid, unexpired guest token after its linked check
-leaves `OPEN`. This is intentionally a read-only exception: order submission and waiter-call
-mutations still use the OPEN-only session resolver and reject a closed check. The web guest page
-polls the status endpoint and replaces the menu/order interface with a branded "Thanks for dining
-with us" completion screen when staff close the table; the same completion state survives a page
-refresh until the four-hour guest token expires.
+`GET /api/guest/check` delivers a terminal `CLOSED`/`VOIDED` status exactly once after its linked
+check leaves `OPEN`, and revokes that guest token in the same transaction. The web guest page
+clears its stored token immediately, replaces the menu/order interface with a branded "Thanks for
+dining with us" completion screen, then returns to the same QR's fresh start/join screen after four
+seconds (or when the guest taps Continue). A refresh cannot restore the completed visit, and the
+old 4-digit join code cannot attach to a later party because `/api/guest/join` only compares the
+code belonging to the table's current `OPEN` check.
 
 ## Known gaps (unchanged — see original DA pass)
 
