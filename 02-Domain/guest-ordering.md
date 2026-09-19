@@ -39,10 +39,14 @@ supersedes the earlier per-order-OTP design (`ADR`/backlog references calling th
   table-session so a second phone at the same table can attach to the already-open check
   (`POST /api/guest/join`) instead of starting a duplicate one. Not unique across tables — it's
   only ever compared against the one open check for the table it was scanned at.
-- Session identity is an opaque token in the guest's browser `sessionStorage`
-  (`guestApiClient.ts`, key `ninjasu_guest_session`), sent as the `X-Guest-Session` header —
-  deliberately a separate axios instance from the staff client so a guest's expired session never
-  gets redirected into the staff `/login` page.
+- Session identity is an opaque token in the guest's browser `localStorage`, keyed by the scanned
+  QR token (`guestApiClient.ts`, prefix `ninjasu_guest_session:`), and sent as the
+  `X-Guest-Session` header. QR scoping prevents one table's token being rehydrated on another
+  table URL; durable storage lets the session survive Android recreating a scanner WebView during
+  a system-theme/configuration change. The server remains authoritative: tokens expire after four
+  hours and mutations reject any check that is no longer OPEN. The guest client deliberately uses
+  a separate axios instance from the staff client so an expired guest session never redirects to
+  the staff `/login` page.
 
 ## Where the join code is visible
 
@@ -64,10 +68,10 @@ a second device to an *already-open* session on that table. Neither substitutes 
 
 ## Reconnect behavior (fixed 2026-08-05)
 
-The guest session is persisted (`sessionStorage`, not memory-only) and `GuestOrderPage.tsx` has
-explicit rehydration logic (`rehydrateQuery`) to restore it on a same-tab reload — e.g. after a
-mobile browser discards and reloads a backgrounded tab (normal OS memory-pressure behavior when a
-guest switches apps, such as opening phone Settings, and isn't something this app controls).
+The guest session is persisted in QR-scoped durable browser storage and `GuestOrderPage.tsx` has
+explicit rehydration logic (`rehydrateQuery`) to restore it on reload — including when Android
+recreates an embedded scanner/WebView after a system theme change or memory pressure. Browsers
+that block durable storage fall back to same-tab `sessionStorage`.
 
 **Bug, now fixed:** the rehydrate call used to treat *any* failure — a confirmed-invalid session
 (backend 403, `resolveActiveSession`'s three throw sites: bad/expired token, revoked, check
@@ -78,6 +82,15 @@ guest back to the scan screen, losing their session and join code for no real re
 Fixed by making `GuestOrderPage.tsx` status-aware: only a confirmed 403 clears the session now;
 anything else retries (up to 2 attempts) and, if still failing, shows a "Couldn't reconnect — try
 again" state with a manual retry instead of silently discarding the session.
+
+## Closed-table handoff
+
+`GET /api/guest/check` remains readable for a valid, unexpired guest token after its linked check
+leaves `OPEN`. This is intentionally a read-only exception: order submission and waiter-call
+mutations still use the OPEN-only session resolver and reject a closed check. The web guest page
+polls the status endpoint and replaces the menu/order interface with a branded "Thanks for dining
+with us" completion screen when staff close the table; the same completion state survives a page
+refresh until the four-hour guest token expires.
 
 ## Known gaps (unchanged — see original DA pass)
 
