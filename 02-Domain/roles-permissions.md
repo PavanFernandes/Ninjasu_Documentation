@@ -80,7 +80,7 @@ Not permissions (owner-only): enabling POS / guest-ordering (`setPosEnabled` —
 | `GuestOrderServiceImpl.listPendingTables`, `.decideTable` | POS_FLOOR_ACTORS | `floor.open_table` |
 | `PosOrderController.voidKot`, `.voidTakeaway` | POS_FLOOR_ACTORS | `floor.void_kot` |
 | `PosOrderController.fireTakeaway` | POS_FLOOR_ACTORS | `takeaway.manage` |
-| `PosOrderController.updateKotStatus`, `.updateTakeawayStatus` (`verifyKotTransitionRole`) | per-TARGET: cook→KITCHEN, serve/collect→FLOOR | →PREPARING/READY: `kds.update_status`; →SERVED/COLLECTED: `floor.serve` |
+| `PosOrderController.updateKotStatus`, `.updateTakeawayStatus` (`verifyKotTransitionRole`) | per-TARGET: cook→KITCHEN, serve/collect→FLOOR | →PREPARING/READY: `kds.update_status`; →SERVED: `floor.serve`; →COLLECTED (takeaway handover, counts as revenue): `floor.settle_bill` |
 | `PosOrderController.getKdsFeed` | POS_VIEWERS | `kds.view` |
 | `PosOrderController.getTakeawayOrders` (`GET /takeaway-orders`, new) | n/a | `takeaway.manage` — returns TAKEAWAY orders only; the Takeaway tab reads this, not /kds |
 | `ShopTableServiceImpl.listTables` | POS_VIEWERS | any-of(`floor.view`,`kds.view`) |
@@ -96,7 +96,7 @@ Not permissions (owner-only): enabling POS / guest-ordering (`setPosEnabled` —
 | `OrderNotificationListener` guest-approval push (`floorActorTokens`) | POS_FLOOR_ACTORS | holders of `floor.open_table` |
 | `OrderNotificationListener` delivery new/cancel (`tokensForShop`) | every member | **unchanged: every member** (do not filter) |
 | `AuthServiceImpl` invite accept (L423-440) | copies `invite.role` | copies `shop_invite_roles` → `user_shop_roles`; if none of the invite's roles still exist ⇒ invite is void (reject as expired). Existing member re-invited: membership left unchanged (as today) |
-| `ShopServiceImpl.createShop` (L139) / `MembershipBackfillRunner` | sets role "OWNER" | set `is_owner=true` (no role row); createShop also seeds the 5 templates |
+| `ShopServiceImpl.createShop` (L139) / `MembershipBackfillRunner` | sets role "OWNER" | set `is_owner=true` (no role row); createShop also seeds the 6 DEFAULT templates (Admin, Manager, Staff, Chef, Accountant, Cashier) |
 | `getMyShop/getMyShops` `myRole` | membership.role | see "Legacy myRole" |
 
 Implementation done-condition: `grep -rn "getRole()\|ShopRoles\.\|\"OWNER\"" src/main` returns nothing outside the deleted/legacy shim. Every POS action endpoint MUST use a specific key (never a broad one).
@@ -114,20 +114,24 @@ Owner is implicit, not a role. **Two seed sets:**
 - (+ **Admin** and **Accountant** seeded for existing shops too, unassigned)
 
 **B. `DEFAULT` set — seeded for NEW shops (least-privilege; owner edits):**
-| | Admin | Manager | Staff | Chef | Accountant |
-|---|---|---|---|---|---|
-| online_orders.manage | ✅ | ✅ | | | |
-| floor.view / open_table / fire_kot / serve / settle_bill | ✅ | ✅ | ✅ | | |
-| floor.void_kot / void_bill | ✅ | ✅ | | | |
-| takeaway.manage | ✅ | ✅ | ✅ | | |
-| kds.view / update_status | ✅ | ✅ | | ✅ | |
-| kds.receive_alarm | | | | ✅ | |
-| reports.history.view | ✅ | ✅ | | | ✅ |
-| inventory.purchases.view / manage | ✅ | ✅ | | | view only |
-| inventory.stock.manage | ✅ | ✅ | | | |
-| menu.view | ✅ | ✅ | ✅ | | |
-| menu.manage / tables.manage | ✅ | ✅ | | | |
-| team.manage / roles.manage | ✅ | | | | |
+| | Admin | Manager | Staff | Chef | Accountant | Cashier |
+|---|---|---|---|---|---|---|
+| online_orders.manage | ✅ | ✅ | | | | |
+| floor.view / serve | ✅ | ✅ | ✅ | | | ✅ |
+| floor.open_table / fire_kot | ✅ | ✅ | ✅ | | | |
+| floor.settle_bill | ✅ | ✅ | | | | ✅ |
+| floor.void_kot / void_bill | ✅ | ✅ | | | | |
+| takeaway.manage | ✅ | ✅ | ✅ | | | ✅ |
+| kds.view / update_status | ✅ | ✅ | | ✅ | | |
+| kds.receive_alarm | | | | ✅ | | |
+| reports.history.view | ✅ | ✅ | | | ✅ | |
+| inventory.purchases.view / manage | ✅ | ✅ | | | view only | |
+| inventory.stock.manage | ✅ | ✅ | | | | |
+| menu.view | ✅ | ✅ | ✅ | | | |
+| menu.manage / tables.manage | ✅ | ✅ | | | | |
+| team.manage / roles.manage | ✅ | | | | | |
+
+**Staff (waiter/captain) does not settle bills or hand over takeaway (COLLECTED).** Settling belongs to Cashier, Manager, Admin and the owner. A Cashier cannot move a takeaway to READY (`kds.update_status`); the kitchen or a manager does. Takeaway has no tender/payment record — COLLECTED is the sale. Existing shops keep their LEGACY seeds; `db_manual/remove-staff-settle-bill.sql` (owner-run, after creating a Cashier from the template menu) removes `floor.settle_bill` from their Staff roles.
 
 Owners of existing shops tighten their roles themselves; nothing narrows silently. The Admin template holds every catalog key EXCEPT `kds.receive_alarm` (a holder counts as a chef for alarm routing, so an Admin holding it would receive every kitchen alarm and defeat the no-chef fallback). Owner-only actions are not permissions, so Admin cannot perform them.
 
