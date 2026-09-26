@@ -25,7 +25,7 @@ Takeaway and delivery record no payment here.
 
 - **Payment types are per shop** (`shop_payment_types`). Cash, UPI and Card exist for every shop from first use
   (seeded lazily by `ensureDefaults`, backfilled for existing shops by `PaymentTypesMigrationRunner`).
-  Owners/managers add, rename and disable types on the web Settings page. **Types are never deleted, only
+  Owners/managers add types, rename custom ones and turn any type on/off on the web Settings page. **The default Cash/UPI/Card cannot be renamed** (the API rejects it) — legacy `{mode}` requests and reports rely on those names. **Types are never deleted, only
   disabled**, and at least one must stay active.
 - `system_code` (CASH/UPI/CARD) is set only on the seeded rows and survives renames. It is how a legacy
   `{mode}` request and "which one is cash" find the right row. Custom types have `system_code = NULL`.
