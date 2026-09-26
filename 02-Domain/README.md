@@ -24,3 +24,4 @@ This folder is the **source of truth** for business rules shared across the whol
 | [cart.md](cart.md) | Cart sessions, multi-vertical carts, snapshot pricing, validation |
 | [wishlist.md](wishlist.md) | Wishlist rules |
 | [captain-ordering.md](captain-ordering.md) | Captain ordering (dine-in POS + KDS) rules |
+| [payment-types.md](payment-types.md) | Per-shop payment types + split payment on a dine-in bill |
