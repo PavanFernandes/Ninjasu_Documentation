@@ -25,7 +25,12 @@ instead of re-deriving it.
 
 | Doc | What it covers |
 |---|---|
+| [admin-access-redesign.md](admin-access-redesign.md) | **Proposed** — platform staff access: `platform_staff` table (admin + area roles) instead of `users.roles`, separate staff login/token/console host, `platform_audit_events`; effort + build order. Lands before Schedule Phase 2 |
+| [schedule-design-review.md](schedule-design-review.md) | Schedule Phase 1 devil's-advocate review: P1–P8 verdicts, plan corrections, D1–D8 |
+| [schedule-plan.md](schedule-plan.md) | **Designing** — Schedule (planned lunch delivery) vs Eat Now as per-area modes; HSR pilot with manual batching; locked decisions, vocabulary, kill criterion, blockers, phases 0–8 |
 | [vision-inventory-module.md](vision-inventory-module.md) | **Designing** — Raw-Material Inventory: purchase capture, grocery-list loop, data model, 14 DA conditions, phases. Build gated on POS cohort |
+| [audit-log-plan.md](audit-log-plan.md) | **Designing** — cross-module append-only audit log (who did what, when; filter by module/event/staff/date), competitor case studies, 15 DA conditions, phases. Build after RBAC merges |
+| [audit-log-phase1-followup.md](audit-log-phase1-followup.md) | Audit Log Phase 1 build notes — deploy order, deviations from the plan, known gaps, endpoint backlog for later phases |
 | [vision-spatial-table-view.md](vision-spatial-table-view.md) | **Vision** — Spatial Table View / floor map |
 | [pricing-and-positioning.md](pricing-and-positioning.md) | POS pricing verdict, positioning, deferred directions |
 | [backlog-ideas.md](backlog-ideas.md) | Backlog Ideas — Food Ninja |

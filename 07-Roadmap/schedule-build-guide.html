@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Schedule Build Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: sticky section nav over one reading column; flows and ladders drawn with CSS; thermal-label chips for order codes. */
+:root {
+  --bg: #f4f6f7;
+  --surface: #ffffff;
+  --surface-2: #eaeff1;
+  --ink: #16212b;
+  --muted: #566573;
+  --line: #d3dce1;
+  --accent: #b97a00;
+  --accent-soft: #fbefd0;
+  --accent-ink: #5a3a00;
+  --good: #1f7a4d;
+  --good-soft: #dcf1e5;
+  --warn: #a35200;
+  --bad: #b3261e;
+  --bad-soft: #fbe3e0;
+  --label-bg: #fffdf5;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Figtree", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1820; --surface: #16222c; --surface-2: #1d2c38; --ink: #e8eef2; --muted: #9bacb8; --line: #2a3b48;
+    --accent: #f0b23a; --accent-soft: #3a2d0f; --accent-ink: #ffdf9a;
+    --good: #5fd49a; --good-soft: #14352a; --warn: #f0a050; --bad: #ff8a80; --bad-soft: #3d1b19; --label-bg: #1f2a33;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1820; --surface: #16222c; --surface-2: #1d2c38; --ink: #e8eef2; --muted: #9bacb8; --line: #2a3b48;
+  --accent: #f0b23a; --accent-soft: #3a2d0f; --accent-ink: #ffdf9a;
+  --good: #5fd49a; --good-soft: #14352a; --warn: #f0a050; --bad: #ff8a80; --bad-soft: #3d1b19; --label-bg: #1f2a33;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 400 16px/1.6 var(--font-body); padding-inline: 16px; }
+.wrap { max-width: 1040px; margin-inline: auto; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(2.2rem, 6vw, 3.6rem); font-weight: 700; letter-spacing: -0.02em; }
+h2 { font-size: clamp(1.6rem, 3.6vw, 2.2rem); font-weight: 700; letter-spacing: -0.01em; }
+h3 { font-size: 1.15rem; font-weight: 700; }
+p { margin: 0; max-width: 68ch; }
+a { color: var(--accent); }
+.eyebrow { font: 500 0.78rem/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+nav.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); margin-inline: -16px; padding: 10px 16px; display: flex; gap: 6px 16px; overflow-x: auto; white-space: nowrap; }
+nav.top a { color: var(--muted); text-decoration: none; font-weight: 600; font-size: 0.9rem; padding: 4px 0; }
+nav.top a:hover { color: var(--ink); }
+section { padding-block: 56px 8px; display: flex; flex-direction: column; gap: 20px; scroll-margin-top: 56px; }
+header.hero { padding-block: 56px 8px; display: flex; flex-direction: column; gap: 18px; }
+.lede { font-size: 1.15rem; color: var(--muted); }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 8px; }
+.fact { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+.fact b { font-family: var(--font-display); font-size: 1.3rem; }
+.fact span { color: var(--muted); font-size: 0.92rem; }
+.label { display: inline-flex; gap: 8px; align-items: center; font: 700 0.9rem/1.2 var(--font-mono); background: var(--label-bg); color: var(--ink); border: 1.5px dashed var(--ink); border-radius: 3px; padding: 6px 10px; white-space: nowrap; }
+.label i { font-style: normal; font-weight: 500; color: var(--muted); }
+.tag { display: inline-block; font: 600 0.72rem/1 var(--font-mono); letter-spacing: 0.04em; padding: 4px 7px; border-radius: 4px; background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
+.tag.b { color: var(--accent-ink); background: var(--accent-soft); border-color: transparent; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.note { border-left: 3px solid var(--accent); background: var(--accent-soft); color: var(--accent-ink); padding: 12px 14px; border-radius: 0 6px 6px 0; max-width: 78ch; }
+.note.bad { border-color: var(--bad); background: var(--bad-soft); color: var(--ink); }
+ul.tight { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 4px; }
+.scroll { overflow-x: auto; }
+/* day timeline */
+.day { display: flex; flex-direction: column; gap: 0; border-left: 2px solid var(--line); margin-left: 6px; }
+.step { position: relative; padding: 0 0 22px 22px; display: grid; grid-template-columns: 72px 1fr; gap: 6px 14px; }
+.step::before { content: ""; position: absolute; left: -7px; top: 6px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); }
+.step time { font: 700 0.95rem/1.6 var(--font-mono); color: var(--accent); }
+.step .who { font-weight: 700; }
+.step .body { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.step.warn::before { background: var(--bad); }
+/* lifecycle flow */
+.flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px 0; }
+.node { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; min-width: 128px; flex: 1 1 128px; display: flex; flex-direction: column; gap: 4px; position: relative; margin-right: 22px; }
+.node:last-child { margin-right: 0; }
+.node:not(:last-child)::after { content: "\2192"; position: absolute; right: -19px; top: 50%; transform: translateY(-50%); color: var(--muted); font-weight: 700; }
+.node b { font-family: var(--font-display); }
+.node span { color: var(--muted); font-size: 0.86rem; }
+.node.on { border-color: var(--accent); background: var(--accent-soft); }
+.node.on span { color: var(--accent-ink); }
+.node.bad { border-color: var(--bad); }
+/* money */
+.stack { display: flex; height: 44px; border-radius: 6px; overflow: hidden; font: 700 0.9rem/44px var(--font-mono); }
+.stack div { text-align: center; white-space: nowrap; overflow: hidden; }
+.stack .s1 { background: var(--ink); color: var(--bg); }
+.stack .s2 { background: var(--accent); color: #1b1200; }
+table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 0.74rem/1.2 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.total td { font-weight: 700; border-bottom: 0; }
+/* cutoff ladder */
+.ladder { position: relative; height: 150px; margin: 8px 12px; min-width: 420px; }
+.ladder .track { position: absolute; left: 0; right: 0; top: 72px; height: 6px; border-radius: 3px; background: var(--surface-2); border: 1px solid var(--line); }
+.ladder .seg { position: absolute; top: 72px; height: 6px; background: var(--accent); border-radius: 3px; }
+.mark { position: absolute; transform: translateX(-50%); width: 112px; text-align: center; font-size: 0.8rem; line-height: 1.3; }
+.mark b { display: block; font: 700 0.92rem/1.3 var(--font-mono); }
+.mark::after { content: ""; position: absolute; left: 50%; width: 2px; background: var(--ink); transform: translateX(-50%); }
+.mark.up { top: 0; }
+.mark.up::after { top: 48px; height: 28px; }
+.mark.down { top: 88px; }
+.mark.down::after { top: -16px; height: 16px; }
+.stockrow { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.bar { height: 26px; border-radius: 5px; background: var(--surface-2); position: relative; overflow: hidden; border: 1px solid var(--line); }
+.bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); }
+.bar span { position: relative; padding-inline: 10px; font: 600 0.8rem/24px var(--font-mono); color: var(--ink); white-space: nowrap; }
+/* phases */
+.phases { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 14px; }
+.phase { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.phase.risk { border-color: var(--accent); border-width: 2px; }
+.phase header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 10px; }
+.phase .pid { font: 700 1.05rem/1 var(--font-mono); color: var(--accent); }
+.phase dl { margin: 0; display: grid; grid-template-columns: 78px 1fr; gap: 6px 10px; font-size: 0.93rem; }
+.phase dt { font: 600 0.72rem/1.7 var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.phase dd { margin: 0; min-width: 0; }
+.order { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.order .chip { font: 700 0.85rem/1 var(--font-mono); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+.order .par { display: flex; flex-direction: column; gap: 4px; }
+.order .arrow { color: var(--muted); font-weight: 700; }
+/* playbook + checks */
+ol.play { margin: 0; padding: 0; list-style: none; counter-reset: s; display: flex; flex-direction: column; gap: 12px; }
+ol.play li { counter-increment: s; display: grid; grid-template-columns: 34px 1fr; gap: 12px; }
+ol.play li::before { content: counter(s); width: 34px; height: 34px; border-radius: 50%; background: var(--ink); color: var(--bg); display: grid; place-items: center; font: 700 0.9rem/1 var(--font-mono); }
+ol.play li div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+ol.play li b { font-family: var(--font-display); }
+code { font: 500 0.88em/1.4 var(--font-mono); background: var(--surface-2); padding: 1px 5px; border-radius: 3px; overflow-wrap: anywhere; }
+.checks { display: flex; flex-direction: column; gap: 8px; }
+.check { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.check input { width: 18px; height: 18px; margin-top: 3px; accent-color: var(--accent); }
+.check label { display: flex; flex-direction: column; gap: 2px; cursor: pointer; min-width: 0; }
+.check label span { color: var(--muted); font-size: 0.9rem; }
+.check:has(input:checked) label b { text-decoration: line-through; color: var(--muted); }
+.who-tag { font: 600 0.72rem/1 var(--font-mono); padding: 4px 7px; border-radius: 4px; white-space: nowrap; }
+.who-tag.s { background: var(--accent-soft); color: var(--accent-ink); }
+.who-tag.c { background: var(--good-soft); color: var(--good); }
+.who-tag.z { background: var(--surface-2); color: var(--muted); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+footer { padding-block: 56px 48px; color: var(--muted); font-size: 0.9rem; display: flex; flex-direction: column; gap: 6px; }
+@media (max-width: 560px) {
+  .step { grid-template-columns: 1fr; }
+  .node { margin-right: 0; flex-basis: 100%; }
+  .node:not(:last-child)::after { content: "\2193"; right: auto; left: 50%; top: auto; bottom: -17px; transform: translateX(-50%); }
+  .node:not(:last-child) { margin-bottom: 16px; }
+  .check { grid-template-columns: 22px 1fr; }
+  .check .who-tag { grid-column: 2; justify-self: start; }
+}
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<div class="wrap">
+<nav class="top" aria-label="Sections">
+  <a href="#idea">The idea</a><a href="#day">A lunch, start to finish</a><a href="#flow">How an order moves</a><a href="#cutoffs">Cutoffs and stock</a><a href="#money">Money</a><a href="#phases">Phases</a><a href="#start">Starting the build</a><a href="#before">Before you start</a>
+</nav>
+
+<header class="hero" id="idea">
+  <span class="eyebrow">Ninjasu / HSR Bengaluru / planned lunch delivery</span>
+  <h1>Schedule</h1>
+  <p class="lede">Customers pick a lunch slot, pay once, and Ninjasu batches the day's drops into rider runs. Restaurants prepare from one ticket per slot instead of a stream of single orders.</p>
+  <div class="facts">
+    <div class="fact"><b>HSR, 3 km</b><span>Schedule-only area. The original town keeps Eat Now.</span></div>
+    <div class="fact"><b>12:30 / 1:00 / 1:30</b><span>Delivery slots. Orders close before each slot.</span></div>
+    <div class="fact"><b>One cart, many restaurants</b><span>One payment, one order per restaurant, one group code.</span></div>
+    <div class="fact"><b>Marketplace model</b><span>The restaurant is the seller. Ninjasu earns commission and fees.</span></div>
+  </div>
+  <div class="order" style="margin-top:6px"><span class="eyebrow">A bag at the office reception</span><span class="label">4821-A <i>Asha</i> 3 items</span></div>
+</header>
+
+<section id="day">
+  <span class="eyebrow">Role-play</span>
+  <h2>A lunch, start to finish</h2>
+  <p>Cast: <b>Asha</b> orders, <b>Spice Hub</b> and <b>Honey Bakes</b> cook, <b>Meena</b> runs ops, <b>Raj</b> rides. Biryani split price is 140, commission 10%, so Asha sees 154.</p>
+  <div class="day">
+    <div class="step"><time>Before</time><div class="body"><span class="who">Samivan and Meena set up the area</span><p>Ordering opens 8:00, slots 12:30, 1:00 and 1:30, last call 30 minutes before each slot, 20 drops per slot, delivery free. Spice Hub has a signed agreement and a 10% commission row with its consent reference.</p></div></div>
+    <div class="step"><time>8:00</time><div class="body"><span class="who">Spice Hub sets its day</span><p>Taps "same as yesterday": 50 biryani and 30 thali, each with an order-until time of 11:30. Customers now see the biryani at 154.</p></div></div>
+    <div class="step"><time>9:30</time><div class="body"><span class="who">Asha orders for the office</span><p>She picks the 12:30 slot first, then restaurants. She adds 3 biryani and 1 thali from Spice Hub and 2 sweets from Honey Bakes, and pays once.</p><div class="order"><span class="label">group 4821</span><span class="arrow">&rarr;</span><div class="par"><span class="label">4821-A <i>Spice Hub</i></span><span class="label">4821-B <i>Honey Bakes</i></span></div></div><p>Her order shows "Scheduled for 12:30". She can cancel for free until the earliest cutoff.</p></div></div>
+    <div class="step"><time>9:30 to 11:30</time><div class="body"><span class="who">Spice Hub watches the counts</span><p>Live: "12:30 slot, 6 groups so far; biryani 14 of 50, thali 5 of 30". Nothing rings. The kitchen starts rice early because it sees demand build.</p></div></div>
+    <div class="step"><time>11:30</time><div class="body"><span class="who">Cutoff: one ticket, one alarm</span><p>The release job sends every Spice Hub order for the slot at once. The dashboard rings once: "12:30 lunch, 17 orders: biryani 38, thali 12, ready by 12:10". The manager taps Accept; all orders accept together.</p></div></div>
+    <div class="step warn"><time>11:50</time><div class="body"><span class="who">A problem</span><p>Spice Hub is short two thali and flags "can't make 2 thali" on the ticket. Nothing is refunded yet: the request appears in Meena's problem queue. Meena approves it and picks which two orders to drop. Only then are those customers refunded and the ticket amended.</p></div></div>
+    <div class="step"><time>11:55</time><div class="body"><span class="who">Meena batches</span><p>The board shows the 12:30 drops on a map. She puts nine groups for one office tower into Batch 1, assigns Raj, and shares the sheet.</p></div></div>
+    <div class="step"><time>12:10</time><div class="body"><span class="who">Pickup</span><p>The manager marks the ticket Ready; bags carry labels like <span class="label">4821-A <i>Asha</i> 3 items</span>. Raj taps "picked up from Spice Hub, 17 orders", then collects <b>4821-B</b> at Honey Bakes. A group always travels in one batch.</p></div></div>
+    <div class="step"><time>12:30</time><div class="body"><span class="who">Delivery</span><p>At reception Raj hands bags over by order code and takes a photo. Asha's tracking shows Delivered.</p></div></div>
+    <div class="step"><time>Week end</time><div class="body"><span class="who">Settlement by hand</span><p>The export shows 4821-A: payout 540, commission 54. The team pays Spice Hub manually.</p></div></div>
+  </div>
+  <div class="note"><b>What the role-play added to the plan:</b> a "ready by" time on the ticket, an ops action to fix an address before batching, a customer notification at each stage, and a rule that a group always travels in one batch.</div>
+</section>
+
+<section id="flow">
+  <span class="eyebrow">Mechanics</span>
+  <h2>How an order moves</h2>
+  <h3>One checkout, one group</h3>
+  <div class="flow">
+    <div class="node on"><b>Cart</b><span>Several restaurants, one slot, one address</span></div>
+    <div class="node on"><b>Order group</b><span>One payment, group code, delivery fee</span></div>
+    <div class="node on"><b>Orders</b><span>One per restaurant, code like 4821-A</span></div>
+  </div>
+  <h3>Each order's life</h3>
+  <div class="flow">
+    <div class="node"><b>Paid</b><span>Capacity and dishes reserved</span></div>
+    <div class="node on"><b>SCHEDULED</b><span>Hidden from the live board, no alarm</span></div>
+    <div class="node"><b>PLACED</b><span>Released at the cutoff, ticket rings once</span></div>
+    <div class="node"><b>Accepted / Ready</b><span>One tap on the ticket</span></div>
+    <div class="node"><b>Picked up</b><span>Rider, per restaurant</span></div>
+    <div class="node"><b>Delivered</b><span>Group drop at the office</span></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>Cancel and refund</h3><ul class="tight"><li>Customer cancels the whole group before the earliest locked cutoff: one full refund.</li><li>After the cutoff the customer cannot cancel.</li><li>A restaurant decline or ops cancel refunds that order only, as a partial refund on the group payment.</li><li>Refund rows are locked so the total never exceeds what was captured, and the delivery fee is refunded once.</li></ul></div>
+    <div class="card"><h3>Why a status, not a time filter</h3><p>The live board lists every status that is not finished. A time filter would have to be remembered by every reader forever. A separate SCHEDULED status keeps these orders off the board by construction, and a test makes every status belong to exactly one group.</p></div>
+  </div>
+</section>
+
+<section id="cutoffs">
+  <span class="eyebrow">Two numbers per dish</span>
+  <h2>Cutoffs and stock</h2>
+  <p>Each dish, each day has a <b>stock</b> and an <b>order-until</b> time, both editable by the restaurant at any moment. The area adds one rule: a <b>last call</b> before each slot, because riders need the orders in time.</p>
+  <div class="scroll"><div class="ladder" role="img" aria-label="Timeline for the 12:30 slot from 11:00 to 12:45">
+    <div class="track"></div><div class="seg" style="left:29%;width:57%"></div>
+    <div class="mark up" style="left:29%"><b>11:30</b>Biryani order-until. Bulk ticket released.</div>
+    <div class="mark down" style="left:57%"><b>12:00</b>Slot last call. Nothing can be ordered for 12:30.</div>
+    <div class="mark up" style="left:67%"><b>12:10</b>Ready by. Rider pickup.</div>
+    <div class="mark down" style="left:86%"><b>12:30</b>Delivery slot.</div>
+  </div></div>
+  <div class="grid2">
+    <div class="card"><h3>Zepto-style restock</h3>
+      <div class="stockrow">
+        <div class="bar"><i style="width:100%"></i><span>Biryani bulk 50, order until 11:30</span></div>
+        <div class="bar"><i style="width:30%"></i><span>Extra +15, order until 1:00 pm</span></div>
+      </div>
+      <p>Spice Hub cooks extra: it raises stock to 65 and moves order-until to 1:00. The dish reappears on the next refresh. The extra stock can only be ordered for the 1:30 slot, because the 1:00 slot's last call is 12:30.</p></div>
+    <div class="card"><h3>The rules</h3><ul class="tight">
+      <li>Raise stock any time; lower it only down to what is already ordered.</li>
+      <li>Move order-until earlier or later, including reopening a closed dish.</li>
+      <li>A dish shows "order by 11:30", "sold out" or "closed for this slot", greyed but visible.</li>
+      <li>An order's cutoff is locked when it is paid. Later edits never change it.</li>
+    </ul></div>
+  </div>
+</section>
+
+<section id="money">
+  <span class="eyebrow">Marketplace pricing</span>
+  <h2>Money</h2>
+  <p>The restaurant gets its dine-in price as the <b>split price</b>. Commission is built into the menu price the customer sees. Delivery and packaging appear at checkout.</p>
+  <div class="card">
+    <h3>One biryani</h3>
+    <div class="stack" role="img" aria-label="Menu price 154 rupees: split 140 plus commission 14"><div class="s1" style="width:90.9%">split 140</div><div class="s2" style="width:9.1%">14</div></div>
+    <p>Menu price 154 = 140 + 10% of 140, with commission rounded to the nearest rupee. A rate change raises the menu price, never the restaurant's payout.</p>
+  </div>
+  <div class="card scroll">
+    <h3>Asha's group 4821 (example)</h3>
+    <table>
+      <thead><tr><th>Line</th><th class="n">Menu price</th><th class="n">Restaurant gets</th><th class="n">Commission</th></tr></thead>
+      <tbody>
+        <tr><td>4821-A Spice Hub: 3 biryani + 1 thali</td><td class="n">594</td><td class="n">540</td><td class="n">54</td></tr>
+        <tr><td>4821-B Honey Bakes: 2 sweets</td><td class="n">88</td><td class="n">80</td><td class="n">8</td></tr>
+        <tr><td>Delivery</td><td class="n">0</td><td class="n">-</td><td class="n">-</td></tr>
+        <tr class="total"><td>Food total</td><td class="n">682</td><td class="n">620</td><td class="n">62</td></tr>
+      </tbody>
+    </table>
+    <p>GST (5% on food, paid by Ninjasu under section 9(5) as the e-commerce operator) is added on the bill and rounded to a whole rupee. It passes through and is never Ninjasu revenue. The rate and what it applies to are for the CA to confirm.</p>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>Done by the team, outside the code</h3><ul class="tight"><li>The restaurant agreement and the commission notice period.</li><li>The rule that the payout is never above the dine-in price.</li><li>Payouts, by hand, from a settlement export.</li><li>COD cash: the rider remits it to Ninjasu.</li></ul></div>
+    <div class="card"><h3>Recorded by the code</h3><ul class="tight"><li>Per order line: split price and menu price.</li><li>Per order: payout, commission, rate used.</li><li>Checkout charges as separate rows.</li><li>The rate in force at checkout, locked on the order.</li></ul></div>
+  </div>
+</section>
+
+<section id="phases">
+  <span class="eyebrow">Build order</span>
+  <h2>Phases, in order</h2>
+  <p>Strict order inside each phase. After Phase 2d freezes the contracts, the ops board, customer app and restaurant side can run in parallel.</p>
+  <div class="scroll"><div class="order" style="min-width:560px;padding-block:6px">
+    <span class="chip">0</span><span class="arrow">&rarr;</span><span class="chip">2a</span><span class="arrow">&rarr;</span><span class="chip" style="border-color:var(--accent)">2b</span><span class="arrow">&rarr;</span>
+    <div class="par"><span class="chip">2c</span><span class="chip">2d</span></div><span class="arrow">&rarr;</span>
+    <div class="par"><span class="chip">3</span><span class="chip">4</span><span class="chip">5</span></div><span class="arrow">&rarr;</span><span class="chip">6</span><span class="arrow">&rarr;</span><span class="chip">7</span><span class="arrow">&rarr;</span><span class="chip">8</span>
+  </div></div>
+  <div class="phases">
+    <article class="phase"><header><span class="pid">0</span><h3>Clear the runway</h3><span class="tag">BIZ</span><span class="tag">B</span><span class="tag">R</span></header>
+      <dl><dt>Lands</dt><dd>Restaurant agreement signed. Adversarial re-review of online payment, plus the missing instant refund after a confirm-time stock failure. Delivery loop device test. Staff-access ADR. Customer push check.</dd><dt>Ships as</dt><dd>Normal fixes. No Schedule code.</dd><dt>Exit</dt><dd>A prepaid delivery order works end to end on phones.</dd></dl></article>
+    <article class="phase"><header><span class="pid">2a</span><h3>Areas, dates, slots, rates</h3><span class="tag b">BACKEND</span></header>
+      <dl><dt>Lands</dt><dd><code>service_area</code>, slots, <code>shops.service_area_id</code>, <code>commission_rate</code>, the single date resolver, platform audit table, admin and context endpoints.</dd><dt>Ships as</dt><dd>Additive SQL first, then merge. Everything off by default; a shop with no area behaves as today.</dd><dt>Exit</dt><dd>Tomorrow-path tests pass with advance days set to 1.</dd></dl></article>
+    <article class="phase risk"><header><span class="pid">2b</span><h3>Orders, groups, payment, reservations</h3><span class="tag b">BACKEND</span><span class="tag">RISKIEST</span></header>
+      <dl><dt>Lands</dt><dd>Nine tasks: status classification, Schedule menu and stock, pricing, multi-restaurant cart, order groups with the checkout contract, group payment core (verify, webhook, reconciliation), reservations, refunds and cancel, release job.</dd><dt>Ships as</dt><dd>One PR per task. Schedule checkout stays off until the end.</dd><dt>Exit</dt><dd>Race, duplicate payment, partial failure, over-refund tests pass; the existing payment tests stay green.</dd></dl></article>
+    <article class="phase"><header><span class="pid">2c</span><h3>Settlement inputs</h3><span class="tag b">BACKEND</span></header>
+      <dl><dt>Lands</dt><dd>One "settleable order" definition, group-level money fields, reject Schedule for Route-split shops.</dd><dt>Exit</dt><dd>A two-restaurant group with a partial refund reconciles to Razorpay.</dd></dl></article>
+    <article class="phase"><header><span class="pid">2d</span><h3>Tickets, notifications, ops API</h3><span class="tag b">BACKEND</span></header>
+      <dl><dt>Lands</dt><dd>Ticket publications and one release event, group customer notifications, live counts from a cache, staff authorization and <code>/api/ops/**</code>, ops address fix, frozen API contracts.</dd><dt>Exit</dt><dd>Contracts versioned and published to the web, customer and rider apps.</dd></dl></article>
+    <article class="phase"><header><span class="pid">3</span><h3>Ops board</h3><span class="tag b">B</span><span class="tag">W</span></header>
+      <dl><dt>Lands</dt><dd>Admin screens, group batching, batch delivery assignment, the board with problem queue, settlement export.</dd><dt>Exit</dt><dd>A manager runs a simulated lunch and exports settlement.</dd></dl></article>
+    <article class="phase"><header><span class="pid">4</span><h3>Customer app</h3><span class="tag">C</span></header>
+      <dl><dt>Lands</dt><dd>Slot-first browsing, greyed restaurants and dishes, multi-restaurant cart, checkout with price-changed confirmation, group tracking and cancel.</dd><dt>Exit</dt><dd>Schedule from two restaurants, pay once, track.</dd></dl></article>
+    <article class="phase"><header><span class="pid">5</span><h3>Restaurant side</h3><span class="tag">W</span></header>
+      <dl><dt>Lands</dt><dd>Lunch list with stock and order-until, live counts, one ticket with accept, ready, handover and partial decline.</dd><dt>Exit</dt><dd>A restaurant preps from one ticket.</dd></dl></article>
+    <article class="phase"><header><span class="pid">6</span><h3>Rider batching</h3><span class="tag b">B</span><span class="tag">R</span></header>
+      <dl><dt>Lands</dt><dd>Prepaid completion (no cash step), batch APIs, group drop completion, batch card in the rider app.</dd><dt>Exit</dt><dd>A rider completes a multi-restaurant batch with no cash step.</dd></dl></article>
+    <article class="phase"><header><span class="pid">7</span><h3>HSR pilot</h3><span class="tag">BIZ</span></header>
+      <dl><dt>Lands</dt><dd>One area, a few restaurants, two lunch riders, one office cluster, behind flags. Weekly reconciliation and kill-criterion review.</dd><dt>Exit</dt><dd>Weeks of reconciled data and a decision to scale, change economics, or stop.</dd></dl></article>
+    <article class="phase"><header><span class="pid">8</span><h3>Numbers and iterate</h3></header>
+      <dl><dt>Lands</dt><dd>Numbers view, settled marks, drop-point choice, tomorrow switch-on, Route split, paid add-ons.</dd><dt>Exit</dt><dd>Next investment chosen from pilot data.</dd></dl></article>
+  </div>
+</section>
+
+<section id="start">
+  <span class="eyebrow">New session</span>
+  <h2>Starting the build</h2>
+  <ol class="play">
+    <li><div><b>Load context</b><p>Run <code>/focus</code>. It reads the tracker, the plan and the reviews. Open <code>schedule-implementation-order.md</code> and pick the first row of the tracker that is not done.</p></div></li>
+    <li><div><b>Confirm a clean start</b><p>Backend on <code>main</code>, level with origin, no changes. Branch from <code>origin/main</code>, for example <code>feature/schedule-service-areas</code>. No worktrees.</p></div></li>
+    <li><div><b>Work one task at a time</b><p>Brief with <code>/gcp</code>, tests first, then the change. Run hand-run SQL on a scratch Neon branch, never on production. Run the full test suite and eslint, not typecheck alone. Re-check anything Codex reports.</p></div></li>
+    <li><div><b>Ship in this order</b><p>Run the additive SQL in production first (the boot guard stops the app if a table is missing), then merge the draft PR (main auto-deploys), then read <code>docker logs ninja --tail 80</code>. A 502 for about 30 seconds is normal. Eat Now must behave exactly as before.</p></div></li>
+    <li><div><b>Record progress</b><p>Update the Status column in the tracker table and commit it with the slice. Changes to the plan itself go to a separate session.</p></div></li>
+    <li><div><b>Pick the model for the work</b><p>Phase 2b (payment core) and design questions: Opus. Screens in the web, customer and rider apps: Sonnet. Switching models mid-session re-reads the whole context, so start a fresh session per phase.</p></div></li>
+  </ol>
+  <div class="note"><b>How each phase reaches production:</b> additive SQL, then merge with the feature off, then verify nothing changed for Eat Now, then enable for the pilot area only. Rollback is switching the area's Schedule flag off; open groups are refunded or finished from ops, and evidence tables are never dropped.</div>
+</section>
+
+<section id="before">
+  <span class="eyebrow">Checklist</span>
+  <h2>Before you start</h2>
+  <p>Ticks are saved in this browser only.</p>
+  <div class="checks" id="checks">
+    <div class="check"><input type="checkbox" id="c1"><label for="c1"><b>Decide: paid add-ons on Schedule dishes in version 1</b><span>Proposed: none. Commission on add-ons is not specified, so customised dishes would be out of the pilot.</span></label><span class="who-tag s">SAMIVAN</span></div>
+    <div class="check"><input type="checkbox" id="c2"><label for="c2"><b>Commit and push the vault docs</b><span>Six earlier commits are unpushed and about 18 files are uncommitted, from several sessions, including the three Schedule docs and the code map.</span></label><span class="who-tag s">SAMIVAN OK</span></div>
+    <div class="check"><input type="checkbox" id="c3"><label for="c3"><b>Remove stale worktrees</b><span>Backend: ninja-pr37-worktree and ninja-stockfix-worktree. Web: confirm-dialog. Folders: _worktrees and the reports worktree. Check each for unmerged commits first.</span></label><span class="who-tag c">CLAUDE</span></div>
+    <div class="check"><input type="checkbox" id="c4"><label for="c4"><b>Rotate the Neon owner and read-only passwords</b><span>Update the server env file and recreate the container, since a restart does not reload it. Do this before the first new migration is run against production.</span></label><span class="who-tag s">SAMIVAN</span></div>
+    <div class="check"><input type="checkbox" id="c5"><label for="c5"><b>Run the admin role clean-up SQL</b><span>Now that admin login works, remove ADMIN from the users table roles.</span></label><span class="who-tag s">SAMIVAN</span></div>
+    <div class="check"><input type="checkbox" id="c6"><label for="c6"><b>Settle the staff-access ADR</b><span>The admin-access note contradicts itself about a platform staff table for area roles. Needed before the audit table and the ops API.</span></label><span class="who-tag c">CLAUDE + SAMIVAN</span></div>
+    <div class="check"><input type="checkbox" id="c7"><label for="c7"><b>Set up a scratch database for tests</b><span>A Neon branch or local Postgres. Integration tests must never run against the production database.</span></label><span class="who-tag c">CLAUDE</span></div>
+    <div class="check"><input type="checkbox" id="c8"><label for="c8"><b>Razorpay test keys and webhook secret in the dev environment</b><span>The group payment work needs the verify and webhook paths testable end to end.</span></label><span class="who-tag s">SAMIVAN</span></div>
+    <div class="check"><input type="checkbox" id="c9"><label for="c9"><b>One session per repo at a time</b><span>Other sessions have uncommitted work in the vault. Two sessions editing the same files is the real risk.</span></label><span class="who-tag z">PROCESS</span></div>
+    <div class="check"><input type="checkbox" id="c10"><label for="c10"><b>Business track in parallel</b><span>Partner agreement, GSTIN, HSR restaurants and riders, online payment live. None blocks the first backend slices; all block the pilot.</span></label><span class="who-tag z">TEAM</span></div>
+    <div class="check"><input type="checkbox" id="c11"><label for="c11"><b>Deferred: questions for the CA</b><span>Marketplace model, GST on commission and fees, FSSAI position. Ask before the pilot.</span></label><span class="who-tag z">LATER</span></div>
+  </div>
+</section>
+
+<footer>
+  <span>Source documents, in the vault under 07-Roadmap:</span>
+  <span><code>schedule-implementation-order.md</code> task list and tracker &middot; <code>schedule-plan.md</code> decisions &middot; <code>schedule-design-review.md</code> reasoning</span>
+  <span>All amounts are examples. This page is a summary; the documents above are the source of truth.</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  var key = "schedule-guide-checks";
+  var boxes = document.querySelectorAll("#checks input[type=checkbox]");
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem(key) || "{}"); } catch (e) { saved = {}; }
+  boxes.forEach(function (box) {
+    if (saved[box.id]) box.checked = true;
+    box.addEventListener("change", function () {
+      saved[box.id] = box.checked;
+      try { localStorage.setItem(key, JSON.stringify(saved)); } catch (e) { /* storage unavailable */ }
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

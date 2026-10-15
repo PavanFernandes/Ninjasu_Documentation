@@ -37,7 +37,7 @@ table_checks
   opened_by_staff_id uuid            -- attribution (D6)
   opened_at          bigint          -- epoch millis (matches Order.placed_on)
   status             varchar(20)     -- OPEN | BILLED | CLOSED | VOIDED
-  billed_total       numeric(10,2) null  -- snapshot of sum-of-KOTs at close (report immutability)
+  billed_total       numeric(10,2) null  -- snapshot of sum-of-KOTs at close (report immutability); PRE-TAX — net sales sums it. Amount charged incl. tax = bills.grand_total
   payment_mode       varchar(20) null    -- CASH | UPI | CARD  (the payment source of truth, per DA-5)
   paid_at            bigint null
   closed_by_staff_id uuid null

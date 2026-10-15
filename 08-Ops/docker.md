@@ -48,7 +48,7 @@ The container will auto-start because of `--restart unless-stopped` — you don'
 
 ## If the IP changes (instance stopped and restarted)
 
-The Elastic IP (`18.60.245.187`) never changes — that's the whole point of allocating it. As long as it stays associated with the instance, `api.ninjasu.com` will always resolve correctly. IP changes only happen if you:
+The Elastic IP (`13.200.51.223`) never changes — that's the whole point of allocating it. As long as it stays associated with the instance, `api.ninjasu.com` will always resolve correctly. IP changes only happen if you:
 
 - **Dissociate the Elastic IP** — don't do this.
 - **Terminate the instance and create a new one** — then reassociate the Elastic IP to the new instance and you're fine.

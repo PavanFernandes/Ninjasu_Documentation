@@ -54,6 +54,7 @@ Only actions with a real endpoint today. `X.manage` implies `X.view` where both 
 | | `kds.update_status` | →PREPARING / →READY transitions |
 | | `kds.receive_alarm` | receives new-KOT alarm push |
 | Reports | `reports.history.view` | completed dine-in check history |
+| | `audit.view` | audit log: the shop activity list, a check's activity timeline, and the filter catalog. Admin-only: the owner (implicit) and the DEFAULT Admin template; no other seeded template holds it (LEGACY sets unchanged; existing Admin-template roles get it from `db_manual/audit-view-permission-backfill.sql`). An owner can still grant it to a custom role deliberately. See `07-Roadmap/audit-log-plan.md` |
 | Inventory | `inventory.purchases.view` / `.manage` | purchase ledger read / write |
 | | `inventory.stock.manage` | item stock quantities |
 | Menu | `menu.view` / `menu.manage` | categories, items, addon groups; menu image upload |
