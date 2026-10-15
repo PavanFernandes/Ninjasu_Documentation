@@ -18,6 +18,7 @@ review: schedule-design-review.md
 [schedule-design-review.md](schedule-design-review.md) (the reasoning, P1–P17).
 **Legend:** **[B]** backend · **[W]** Ninjasu_Web · **[C]** Food-Ninja-Frontend (customer app) · **[R]** Ninjasu_Rider_App · **[Biz]** non-code.
 **Rules for every slice:** branch from `origin/main`, no worktrees; `/gcp` brief before coding, quick judge before each push; every SQL object is **hand-run** with a boot guard that fails fast if it is missing; tests before the change that needs them; Codex output is re-verified before commit.
+**Tests:** the case list is in [schedule-acceptance-tests.md](schedule-acceptance-tests.md); write a slice's cases as failing tests before its code.
 **Tracking:** each task has an id (e.g. `2b.3`). Mark progress in the "Status" column of §1, not in prose.
 
 ## 1. Tracker
