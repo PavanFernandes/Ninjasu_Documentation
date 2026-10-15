@@ -3,7 +3,7 @@ id: ""
 title: "Schedule (planned lunch delivery) — Direction & Phase Plan"
 summary: "Eat Now vs Schedule as per-area modes; Schedule launches in Bengaluru HSR (3 km) as manually-batched lunch delivery in fixed slots. Records the decisions, the money model, vocabulary, open decisions, blockers and the phase-by-phase build order across backend, web admin, customer app and rider app."
 type: how-to
-status: final-for-review
+status: final-reviewed-2026-10-15
 apps: [backend, web, customer, rider]
 module: "schedule"
 anchors: []
@@ -81,7 +81,7 @@ resells food (CA to confirm; see §5).
 12. Window open time, `last_call_minutes`, slots (rows: time, capacity) and `advance_days` are set by the platform admin on the Service areas page, validated by one server-side validator, audited. Slot day rows snapshot capacity when created; capacity can't drop below reserved.
 
 ### 3.3 Orders, stock, cancellation (decided 2026-10-14; review P3, P4, P5, P12)
-13. **One restaurant per order, but a Schedule cart may hold several restaurants (D1 revised 2026-10-14).** Eat Now carts stay single-restaurant. A Schedule cart (one service date, one slot, one delivery address) may span restaurants; checkout creates one **order group** (one payment, one customer, one drop, one delivery fee) and **one order per restaurant** inside it. Each order is still single-restaurant, so tickets, commission, payout, GST invoice and refunds stay per order. See §3.5. `CartShopPolicy` replaces the hard-coded check in `CartServiceImpl.addToCart`.
+13. **One restaurant per order, but a Schedule cart may hold several restaurants (D1 revised 2026-10-14).** Eat Now carts stay single-restaurant. A Schedule cart (one service date, one slot, one delivery address) may span restaurants; checkout creates one **order group** (one payment, one customer, one drop, one delivery fee) and **one order per restaurant** inside it. Each order is still single-restaurant, so tickets, commission, payout, GST invoice and refunds stay per order. See §3.5. `CartShopPolicy` replaces the hard-coded check in `CartServiceImpl.addToCart`. The shop limit comes from a per-fulfilment `FulfilmentPolicy` (decision 43).
 14. **Cancellation (D2):** free before cutoff (full refund, capacity + stock released); no customer cancel after; a restaurant decline or ops cancel always refunds. The server checks the cutoff.
 15. **Separate curated Schedule menu (D3), Zepto-style stock (decided 2026-10-15):** one `scheduled_menu_item` row per dish per service date with `stock_qty`, `reserved_qty`, `order_until` (clock time) and `split_price`, never touching the live stock counter. The restaurant can raise stock (restock) or lower it to no less than reserved, and move order-until earlier or later at any time, including reopening a dish after its time passed. Examples: bulk biryani 50 until 11:30; fried rice until 12:50 (the slot last call still blocks the 12:30 slot); extra 15 biryani = raise stock to 65 and move order-until to 13:00. The customer sees "order by 11:30", "sold out", or "ordering closed for this slot" (greyed, not hidden); a restock shows up on the next refresh. One availability resolver: item active AND row for the date AND stock > reserved AND now < effective cutoff AND shop assigned AND area not paused. "Same as yesterday" copies stock and order-until. The customer-facing menu price is derived from the split price and the rate in force, never stored.
 16. **Restaurant cutoff (D4, superseded 2026-10-15):** no `schedule_lead_minutes` column; per-dish order-until replaces it (item 15).
@@ -110,6 +110,7 @@ resells food (CA to confirm; see §5).
 34. **Payment confirm fans out** to every order in the group in one flow: each order reserves its own dishes; a restaurant that can't be reserved is refunded as a partial refund on the group payment (recommended), the rest proceeds. If nothing is left, the delivery fee is refunded too.
 35. **Cancellation (D2) for a group:** the customer cancels the whole group before its **earliest locked cutoff** (one refund, simple). Restaurant decline / ops cancel stays per order, refunded as a partial refund.
 36. Each order keeps its own GST treatment (the restaurant is the supplier); the delivery fee belongs to the group.
+37a. **Idempotency and payment account (final review 2026-10-15).** The group carries the client's checkout key; each member order's `idempotency_key` is derived from it (`orders.idempotency_key` is NOT NULL and globally unique). A group is paid to and refunded from the platform Razorpay account with no shop in the path; a group containing a shop that is not `SINGLE_MERCHANT` is rejected at checkout. Group refunds are rows with a lease and a gateway receipt used as the dedupe key. A member order's refundable amount is its immutable grand total; group charges are refundable at group level only. The group payment path validates the gateway's captured amount and currency before confirming. Details: implementation order 2b.4, 2b.7, 2b.9.
 
 ### 3.6 Operational details found in the role-play (2026-10-15)
 37. **Pickup-by time.** Each ticket shows "ready by HH:MM" = slot start − the area's `pickup_lead_minutes`; the restaurant preps against that, not the slot time.
@@ -117,6 +118,8 @@ resells food (CA to confirm; see §5).
 39. **Customer notifications:** paid ("Scheduled for 12:30"), reminder before cutoff (if nothing ordered yet), being prepared (at release), picked up, delivered, refunded (with the reason). Verify customer push state before Phase 4.
 40. **A group always travels in one batch**, even when its restaurants are far apart; the manager picks the pickup order. Revisit only if pilot data shows it hurts.
 41. **"Can't make" needs ops approval (decided 2026-10-15).** A restaurant that cannot make a dish flags it on the ticket ("can't make 2 thali", optionally naming the orders). Nothing is refunded yet: the request lands in the ops **problem queue** as pending, with the affected order codes, customers and minutes to the slot. The ops manager approves (choosing which orders to drop if the restaurant did not say), or rejects, or asks the restaurant to substitute. Only approval cancels those lines, refunds the customers (partial refund) and appends a ticket amendment. No automatic approval.
+42. **Ticket timing (decided 2026-10-15).** The restaurant sees a **draft ticket** that updates live from the first paid order (read-only, no alarm, served from the live-counts cache). It freezes into publication v1 at the slot's **last call**, the same moment batching starts; one `ScheduleTicketReleased` event per shop, date and slot. Changes after v1 (cancellations, approved "can't make") append amendments. A dish's order-until only closes ordering for that dish.
+43. **Flexible by design (decided 2026-10-15).** Multi-restaurant carts are on only for Schedule today. A `FulfilmentPolicy` per fulfilment type owns the differences (max shops per cart, payment owner kind, location policy, cancellation, reservation and release rules); `order_groups` carry `fulfilment_type`, and the payment core runs on a `PaymentOwner` abstraction. The Schedule cart limit is the area setting `schedule_max_shops_per_cart` (default 3). Enabling multi-restaurant for another fulfilment type later = a new policy + UI, with no schema or payment-core change.
 
 ## 4. Kill criterion (deferred 2026-10-14: revisit before the Phase 7 pilot; the board still records the data)
 
@@ -132,7 +135,7 @@ resells food (CA to confirm; see §5).
 | D7 | "Near the shop" rider accept check: UX only or server-recorded | Later | UX only for now |
 | D9 | Prep ticket (proposed) vs a real bulk order from Ninjasu | Phase 2d | Recommend the ticket; a real purchase order makes Ninjasu the buyer-reseller |
 | D11 | Restaurant partner agreement: commission rate + basis, notice period and consent, payout schedule, who sets prices, payout ≤ dine-in price, discount funding, cancellation liability, FSSAI + GST/ECO duties, content licence, termination | Phase 0 | Team + lawyer; not legal advice |
-| CA | Confirm: marketplace/ECO model; whether an ECO must register for GST (assumed yes); GST on commission, platform fee and packaging; whether a menu price built as split + commission (set by Ninjasu from the restaurant's split) keeps the restaurant the supplier; FSSAI position (marketplace, own kitchen) | Before pilot | Deferred by Samivan 2026-10-14; ask before the pilot |
+| CA | **Pricing questions needed before 2b.3** (menu price built as split + commission, set by Ninjasu: does the restaurant stay the supplier under 9(5)?); the rest before the pilot. Confirm: marketplace/ECO model; whether an ECO must register for GST (assumed yes); GST on commission, platform fee and packaging; whether a menu price built as split + commission (set by Ninjasu from the restaurant's split) keeps the restaurant the supplier; FSSAI position (marketplace, own kitchen) | Before pilot | Deferred by Samivan 2026-10-14; ask before the pilot |
 
 ## 6. Blockers outside the Schedule build (Phase 0)
 
@@ -224,6 +227,7 @@ Numbers view from batch records and order charges (orders per run, rider cost pe
 3. Don't start Phase 4 UI before Phase 2 contracts are frozen (type-drift principle).
 4. Findings outside Schedule that were logged, not folded in: item stock-ledger credit leaks, dead `findActiveByShopId`, the shop push saying "COD" for every delivery order, delivery orders ignoring shop opening hours.
 
+Final-review decisions are 42-43 above; the remaining check (O-3, cart entity) is in the implementation order, section 3.
 Implementation order: [schedule-implementation-order.md](schedule-implementation-order.md).
 Related: Raphael dossier `brain/dossiers/ninjasu-pos.md` (assumption A8),
 [audit-log-plan.md](audit-log-plan.md), [admin-access-redesign.md](admin-access-redesign.md),
