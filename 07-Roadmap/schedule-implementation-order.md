@@ -62,7 +62,7 @@ review: schedule-design-review.md
 | 0.2 | Adversarial re-review of online payment (checkout, verify, webhook-first, verify-first, stock failure, cancel, decline, refund retry) and fix the missing immediate refund after a confirm-time stock failure (`PaymentServiceImpl.java:323-328` sets `REFUND_PENDING` but schedules no attempt); the fast-path test (T0-05) must pass before 2b.9 starts | B | do it with 2b.9 in mind: the group payment core reuses this code |
 | 0.3 | Device-test the delivery loop; confirm prod `deliveries.created_by_staff_id` is nullable | R+B | |
 | 0.4 | Pilot setup: boundary, office cluster, riders, a named manual-payout operator; pilot shops are `SINGLE_MERCHANT` | Biz | Route split cannot carry commission |
-| 0.5 | Staff ADR: `admin-access-redesign.md` supersedes its proposal but still describes `platform_staff` for area roles. Decide `service_area_staff(user_id, service_area_id, role)` vs `platform_staff` | B | needed before 2a.5 and 2d.4 |
+| 0.5 | **Decided 2026-10-15:** `platform_staff(user_id, role, service_area_id NOT NULL)` holds area roles only (`AREA_MANAGER`, `AREA_OPS`). ADMIN is never a row; it stays on `PLATFORM_ADMIN_USER_IDS` (admin-access-redesign.md, Revision 2). Build the table on its own branch before 2a.5 and 2d.4 | B | |
 | 0.6 | Verify customer push delivery works on the app (prerequisite for 2d.2 notifications) | C+B | |
 | 0.7 | **CA gate for pricing (before 2b.3).** Ask the CA: does a menu price built as split + commission, set by Ninjasu, keep the restaurant the supplier under section 9(5)? GST on commission, delivery and packaging; the FSSAI position. 2b.3 writes this model into the schema, so the answer is cheaper before than after | Biz | the remaining CA questions can wait until Phase 7 |
 
@@ -181,6 +181,6 @@ Numbers from immutable orders, groups, charges, reservations, batches; then `set
 - **O-2 (closed):** see the decided line above; groups of one are not a separate first build.
 - **O-3 (agreed, do in the /gcp brief before 2b.5):** read the cart line entity and the cart-type enum; confirm no other code path reads `orders` assuming one shop per payment.
 - Paid add-ons on Schedule dishes in v1: proposed **no** (2b.2), awaiting Samivan.
-- Staff ADR (0.5): blocks 2a.5 and 2d.4 only.
+- `platform_staff` build (0.5, decided): blocks 2a.5 and 2d.4 only.
 - CA questions (deferred): marketplace/ECO model, GST on commission/fees, menu price built as split + commission, FSSAI position.
 - D5 handover proof, D7 accept check (later phases).
