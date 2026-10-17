@@ -8,7 +8,7 @@ apps: [backend, web, customer, rider]
 module: "schedule"
 anchors: []
 verified_against: "schedule-plan.md items #1-#41, design review P1-P17 (2026-10-15)"
-updated: 2026-10-15
+updated: 2026-10-18
 review: schedule-design-review.md
 ---
 
@@ -50,7 +50,7 @@ Companion to [schedule-implementation-order.md](schedule-implementation-order.md
 | T2a-07 | **(invariant)** A shop with `service_area_id` NULL: discovery and checkout unchanged | I | P1 |
 | T2a-08 | ADMIN sets a shop's area; a SHOP-role user gets 403; the owner edit DTO cannot carry the field | I | #17 |
 | T2a-09 | Overlapping areas resolve to the nearest centre deterministically | I | P1 |
-| T2a-10 | Commission resolver: shop rate beats area rate; latest `effective_from` at or before the instant wins; a future row is not applied early | U | #22 |
+| T2a-10 | (Superseded 2026-10-18 by T2b-31/T2b-32: percentage rates replaced by commission plans; T2a-10 to T2a-13 apply only while the 2a.4 rate code exists.) Commission resolver: shop rate beats area rate; latest `effective_from` at or before the instant wins; a future row is not applied early | U | #22 |
 | T2a-11 | A rate row with `effective_from` earlier than now + notice days is rejected; exactly at the notice boundary is accepted | I | #22 |
 | T2a-12 | A rate change never alters the rate stored on an existing order | I | #33 |
 | T2a-13 | A tomorrow order placed today uses today's rate | U | #33 |
@@ -68,9 +68,9 @@ Companion to [schedule-implementation-order.md](schedule-implementation-order.md
 | T2b-06 | **(invariant)** An edit to stock or order-until never changes an existing order's locked cutoff | I | #18 |
 | T2b-07 | Two customers pay for the last unit at once: exactly one succeeds, the other is refunded | I | P3 |
 | T2b-08 | Two groups pay for the last slot capacity at once: exactly one succeeds | I | P3, #32 |
-| T2b-09 | Pricing: split 140 at 10% gives 154; split 143 gives 157 (14.3 rounds to 14); split 145 gives 160 (14.5 rounds half up to 15); delivery flat ignores shop `DeliveryConfig`; packaging added; Eat Now unchanged | U | #21, #27 |
+| T2b-09 | Pricing (rewritten 2026-10-18: slab model, split price dropped): commission per item unit from the unit's app price **including its chosen add-ons**: 99 → ₹5, 100 → ₹10, 149 → ₹10, 150 → ₹15, 299 → ₹25, 300 → ₹25, 400 → ₹35; thali Large 200 + Egg 20 + Papad 10 = 230 → ₹20 per unit, qty 2 → ₹40; order commission = sum of its lines; payout = item total at app prices − commission; delivery and packaging fees excluded from the slab; delivery flat ignores shop `DeliveryConfig`; an Eat Now order of a shop with no app prices set is priced as today (holds only if D16 is decided as fall back to dine-in) | U | dec. 2026-10-18, #27 |
 | T2b-10 | Cart: Eat Now second shop still rejected; Schedule cart accepts two shops; mixing date, slot or area is rejected; COD `placeOrder` rejects Schedule | I | #13, P8 |
-| T2b-11 | Checkout re-prices from the server; if split or rate changed since the cart, `PRICE_CHANGED` is returned with new totals and the payment is not created until the customer reconfirms; the order snapshots the confirmed price | I | C18 |
+| T2b-11 | Checkout re-prices from the server; if an app price (dish or add-on option) changed since the cart, `PRICE_CHANGED` is returned with new totals and the payment is not created until the customer reconfirms; the order snapshots the confirmed price | I | C18 |
 | T2b-12 | Two-restaurant checkout creates one group and two orders coded `XXXX-A`, `XXXX-B`; codes unique per area and date; a retried checkout creates no second group | I | #30, #31 |
 | T2b-13 | **(invariant)** Group payment: verify-first, webhook-first, duplicate and concurrent confirms produce one confirmation; each member reserved once; **no live stock ledger write and no `OrderPlacedEvent`** | I | P14, C15 |
 | T2b-14 | Capture after cutoff: full refund. One dish sold out between checkout and payment: partial refund, the rest proceeds. Every dish fails: full refund including the delivery fee | I | #34 |
@@ -87,6 +87,18 @@ Companion to [schedule-implementation-order.md](schedule-implementation-order.md
 | T2b-25 | Confirming a Schedule group completes only the Schedule cart; an active Eat Now cart is untouched | I | 2b.5 |
 | T2b-26 | Partial line refund: order grand total, payout and commission are recomputed from the remaining lines; `refunded_amount` and `refund_state` update with the refund row; the delivery fee is refunded only with the last member | I | 2b.7 |
 | T2b-27 | A group refund resolves through `refund.processed` by gateway refund id; a legacy order refund still resolves by payment id | I | 2b.7 |
+| T2b-28 | Two prices per add-on option: Ninjasu POS, counter sale and the dine-in guest QR menu price from the **dine-in price**; the customer app (Eat Now and Schedule) prices from the **app price**; no screen shows "restaurant price + commission". (Behaviour of an empty app price is open; add its case once decided.) | I | dec. 2026-10-18 |
+| T2b-29 | App-price cap (one global platform setting): saving an app price above dine-in + cap % is refused with a message naming the limit; exactly at the cap is accepted; after Ninjasu tightens the setting, items already above it are flagged and hidden from Schedule until fixed, and reappear once fixed | I | dec. 2026-10-18 |
+| T2b-30 | Only the Ninjasu admin edits a dine-in price (#48, revised 2026-10-18): the restaurant owner's or manager's edit of a dine-in price is refused (403) with POS enabled AND with POS disabled; toggling POS on, editing, toggling off is still refused; the Ninjasu admin's edit succeeds; the app price stays restaurant-editable; every price change writes an audit row (admin edit in `platform_audit_events`, restaurant app-price edit in shop `audit_events`) | I | dec. 2026-10-18 |
+| T2b-31 | **(invariant)** Commission plan versioning: each order snapshots plan id + version and each line's commission; publishing a new plan version never changes an existing order; a version whose `effective_from` is earlier than now + notice days is rejected; a partial refund returns exactly the refunded line's snapshotted commission | I | dec. 2026-10-18, #33 |
+| T2b-32 | Ninjasu admin creates and names a plan (e.g. "Standard") with its slab rows; a SHOP-role user gets 403; plans are append-only (an edit creates a new version); assigning a plan to a shop stores scope, `effective_from` and `consent_ref`; every plan mutation is audited | I | dec. 2026-10-18, D8 |
+| T2b-33 | Permissions: `schedule_menu.view`, `.manage` (dishes, order-until, copy day), `.stock` (restock, mark sold out, move order-until). Owner/admin and Manager pass all; Chef passes view + stock and gets 403 on manage; a role without them gets 403; the new keys appear in DEFAULT templates only and the LEGACY sets are unchanged | I | dec. 2026-10-18, 2b.2 |
+| T2b-34 | Paid add-ons on a Schedule dish (thali + egg / papad, choice of dal or sambar): priced at the options' app prices; the order line snapshots each chosen option with its price; the slab uses the unit total (T2b-09); the per-day `scheduled_menu_item` row carries no price | I | dec. 2026-10-18 |
+| T2b-35 | Copy from another date copies `stock_qty` and `order_until` (never `reserved_qty`), sets `copied_from_id`, and does not overwrite a target row that has reservations; "set order-until for all" updates every row for the date and never moves an existing order's locked cutoff | I | #15, 2b.2(b) |
+| T2b-36 | `GET /api/schedule/context` returns restaurants and dishes with one availability reason per greyed dish (sold out / order-until passed / slot last call / over cap); area and slot data come from `ServiceAreaCatalog` | C | 2b.2(c) |
+| T2b-37 | (2b.12) A shop caller (owner, manager) cannot write a dine-in price through ANY existing path: add-on group create/update, inline option creation on item create/update, shared group options; each path writes only the app price | I | Codex review 2026-10-18 |
+| T2b-38 | (2b.12) The Ninjasu admin lowers a dine-in price so an unchanged app price is now above the cap: the option is flagged and hidden from Schedule | I | Codex review 2026-10-18 |
+| T2b-39 | (2b.12) The same dish shows the same app price on home, search, wishlist, shop menu, cart and checkout; the POS and guest QR show the dine-in price | I | Codex review 2026-10-18 |
 
 ## Phase 2c — Settlement inputs
 | ID | Case | Lvl | Traces |
@@ -118,7 +130,7 @@ Companion to [schedule-implementation-order.md](schedule-implementation-order.md
 | T3-03 | Assigning a rider creates one delivery per member order, atomically; a partial failure rolls back; no member delivery carries a cash amount | I | 3.3, 2d.7 |
 | T3-04 | A late order after the first batch appears in the problem queue as unbatched | E | #37 |
 | T3-05 | Settlement export (golden file): per-restaurant rows plus a group section with codes, charges and refunds | I | 3.5 |
-| T3-06 | Admin forms show each dish's split price next to its dine-in price | E | #20 |
+| T3-06 | (Superseded 2026-10-18: no split price; prices are covered by T2b-28 to T2b-30.) Admin forms show each dish's split price next to its dine-in price | E | #20 |
 
 ## Phase 4 — Customer app
 | ID | Case | Lvl | Traces |
@@ -134,10 +146,11 @@ Companion to [schedule-implementation-order.md](schedule-implementation-order.md
 ## Phase 5 — Restaurant side
 | ID | Case | Lvl | Traces |
 |---|---|---|---|
-| T5-01 | Lunch list: stock and order-until editable any time; "same as yesterday"; the menu-price preview comes from the backend preview endpoint | E | #15 |
+| T5-01 | Lunch list: stock and order-until editable any time; "same as yesterday"; ~~the menu-price preview comes from the backend preview endpoint~~ (superseded 2026-10-18 by T5-05) | E | #15 |
 | T5-02 | Live counts update without an alarm; no sound before release | E | #19 |
 | T5-03 | One accept, one ready; order codes and ready-by time visible; late additions shown | E | #19 |
 | T5-04 | "Can't make" shows as pending until ops decides | E | #41 |
+| T5-05 | **Deferred with D25 (onboarding revisit after Schedule), not part of 2b.13.** Menu editor shows a read-only line next to each base (required ITEM group) option's app price, "Ninjasu keeps ₹X, you get ₹Y", computed on that price alone from the restaurant's assigned plan (Large ₹200 on Standard: keeps ₹20, you get ₹180). Open: what shows for a paid add-on option, since the slab uses the unit total with add-ons (T2b-09) [suggestion: a per-dish preview for a chosen combination, e.g. Large 200 + Egg 20 + Papad 10 = ₹230: keeps ₹20, you get ₹210] | E | dec. 2026-10-18 |
 
 ## Phase 6 — Rider
 | ID | Case | Lvl | Traces |
