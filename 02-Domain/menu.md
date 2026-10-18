@@ -126,9 +126,11 @@ An item cannot be published with a net price of zero. The enforcement mechanism 
 
 A SHARED priced group alone does not satisfy this rule — base price must be item-atomic.
 
-## Planned: dine-in price and online price (decided 2026-10-18, not built yet)
+## Dine-in price and online price (decided 2026-10-18; part (a) live)
 
-Nothing in this section is built. The rules above describe the code today: the customer app, POS and counter sale all read the same `option.price`, so the app currently shows the dine-in price with no commission in it. Decision numbers, commission slabs and commission plans live in [schedule-plan.md](../07-Roadmap/schedule-plan.md) (decisions dated 2026-10-17 / 2026-10-18).
+**Live since 2026-10-18 (2b.12(a), PR #54):** every option has `addons.price` (dine-in) and `addons.online_price`. POS, counter sale and guest QR read the dine-in price; the customer app (home, search, wishlist, menu with `channel=DELIVERY`, cart) reads the online price; the restaurant's editor (no channel) shows the online price. `online_price` is still generated from `price` in the database, so the two are always equal until 2b.12(b) lets the restaurant set it. One owner each: `AddonPricing` (which price a channel charges), `StartsAtPriceQueries` (starts-at SQL), `AddonDtoMapper` (option DTO).
+
+**Not built yet (2b.12(b)):** points 3 and 4 below, the separate online price edit, and the admin dine-in endpoint. Decision numbers, commission slabs and commission plans live in [schedule-plan.md](../07-Roadmap/schedule-plan.md) (decisions dated 2026-10-17 / 2026-10-18).
 
 **Decided (Samivan, 2026-10-18):**
 
