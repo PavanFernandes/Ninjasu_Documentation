@@ -126,26 +126,36 @@ An item cannot be published with a net price of zero. The enforcement mechanism 
 
 A SHARED priced group alone does not satisfy this rule — base price must be item-atomic.
 
-## Dine-in price and online price (decided 2026-10-18; part (a) live)
+## Dine-in price and online price (decided 2026-10-18; part (a) live, part (b) built on `feature/schedule-2b12b-write-split`, not deployed)
 
 **Live since 2026-10-18 (2b.12(a), PR #54):** every option has `addons.price` (dine-in) and `addons.online_price`. POS, counter sale and guest QR read the dine-in price; the customer app (home, search, wishlist, menu with `channel=DELIVERY`, cart) reads the online price; the restaurant's editor (no channel) shows the online price. `online_price` is still generated from `price` in the database, so the two are always equal until 2b.12(b) lets the restaurant set it. One owner each: `AddonPricing` (which price a channel charges), `StartsAtPriceQueries` (starts-at SQL), `AddonDtoMapper` (option DTO).
 
-**Not built yet (2b.12(b)):** points 3 and 4 below, the separate online price edit, and the admin dine-in endpoint. Decision numbers, commission slabs and commission plans live in [schedule-plan.md](../07-Roadmap/schedule-plan.md) (decisions dated 2026-10-17 / 2026-10-18).
+**Built in 2b.12(b), backend only (not deployed; the web and mobile editors are 2b.12(c)):**
+
+- One owner for every write of an option's price: `AddonPriceWriter` (`service/impl/`). The five routes that create or edit an option go through it: add an option, create a shared group, create an item, append groups on an item edit, and `PUT /api/addons/{id}`.
+- **Create:** a restaurant sends `dineInPrice` and `onlinePrice` (both required), or the old bare `price`, which sets both. Sending the bare price with either new field is a 400. A restaurant-created option starts unreviewed (`dine_in_reviewed_at` NULL); one the admin creates counts as reviewed by them.
+- **Edit (`PUT /api/addons/{id}`):** `price` or `onlinePrice` is the online price (exactly one of them). A `dineInPrice` from anyone but the Ninjasu admin is a 403, even when it equals the current one. The admin may send it on this route too.
+- **Cap:** `platform_pricing_config` holds one row (id 1, `online_price_cap_percent`, 10.00 at launch, 0 to 100). It is checked **only when a save changes a price**: online price above dine-in + cap % is a 400 whose message names the limit (rounded to the paisa, `OnlinePriceCap`); a free dine-in option must stay free online. Nothing is computed at read: no flag, no hiding from Schedule, no flagged list. Tightening the cap leaves existing options alone, and a name or image edit that resends an unchanged online price is not re-checked.
+- **Admin routes** (all under `/api/admin`, audited in `platform_audit_events`): `GET|PUT /settings/online-price-cap`; `PUT /shops/{shopId}/addons/{addonId}/dine-in-price` (body: `dineInPrice` required, `onlinePrice` optional; an edit that would leave the online price over the cap is refused, so send both together); `POST /shops/{shopId}/addons/{addonId}/review`; `GET /addon-review-queue?page&size` (unreviewed options, oldest first, size capped at 100). An admin dine-in edit marks the option reviewed.
+- **Audit:** a restaurant creating an option writes `addon.created`, and an online-price change writes `addon.online_price_changed`, both in the shop's activity log under the new **Menu** module (an admin acting on a shop appears as "Ninjasu Support"). A dine-in change writes `addon.dine_in_price_changed` to the platform log with before and after.
+- **Discount:** a discount on an option needs both prices above 0 (create, edit, admin dine-in edit); shared groups still refuse discounts.
+- **Editor response:** the menu editor's option DTO (no channel) carries `dineInPrice` next to `price` (the online price); channel responses never carry it.
+- **Deploy order:** `db_manual/addon-price-write-split-migration.sql` BEFORE the merge, then merge and deploy, then `db_manual/addon-online-price-drop-expression.sql` right after (until then every add-on save fails: the backend writes a generated column). The backend boots with `ddl-auto=update`, so skipping step 1 would create an unseeded config table and empty review columns.
+
+Decision numbers, commission slabs and commission plans live in [schedule-plan.md](../07-Roadmap/schedule-plan.md) (decisions dated 2026-10-17 / 2026-10-18).
 
 **Decided (Samivan, 2026-10-18):**
 
 1. Each add-on option keeps its current price as the **dine-in price** and gains an **online price**. Items still have no price column; the item price is still the sum of the selected options, with the required `ITEM` group giving the base price, using the price of the channel being sold on.
 2. Ninjasu POS, counter sale and the dine-in guest QR menu read the **dine-in price**. The customer app (Eat Now and Schedule) reads the **online price**. The restaurant sets the online price.
-3. **Online-price cap:** one global platform setting, "max online price over dine-in price" (a percentage). No per-restaurant setting. A save that puts an online price above dine-in price + cap % is refused with a clear message. If Ninjasu tightens the setting later, options already above it are flagged and their dishes are hidden from Schedule until fixed.
-4. **Who edits the dine-in price:** only the Ninjasu admin, for every shop with or without POS (set at onboarding from the printed menu, changed on the restaurant's request). The restaurant edits the online price. Every price change is audited.
+3. **Online-price cap:** one global platform setting, "max online price over dine-in price" (a percentage, 10 % at launch). No per-restaurant setting. A save that changes a price and puts the online price above dine-in price + cap % is refused with a clear message. *Revised 2026-10-18:* the cap is checked only at save; tightening it later leaves existing options as they are (no flag, no hiding from Schedule).
+4. **Who edits the dine-in price:** only the Ninjasu admin, for every shop with or without POS (set at onboarding from the printed menu, changed on the restaurant's request); a restaurant enters it once, when it creates an option (D27). The restaurant edits the online price. Every price change is audited.
 5. Commission is never built into a menu price and never shown as "restaurant price + X %". It is computed on the order from the restaurant's commission plan (schedule-plan.md). If Ninjasu changes its commission, online prices are updated by hand; nothing is recomputed automatically.
 6. The restaurant menu editor shows a read-only line next to each online price: "Ninjasu keeps ₹X, you get ₹Y", computed from the restaurant's plan. Commission is per unit on the online price including the chosen add-ons (schedule-plan.md #45), so a line on an add-on option alone would show the wrong commission; which options carry the line is open (below).
 
 **Open (suggestion in brackets):**
 
-- The cap percentage [suggested 10 %, roughly the median premium restaurants add on Swiggy/Zomato today].
-- Empty online price: fall back to the dine-in price [suggested, so Eat Now looks unchanged until a restaurant sets online prices], or require an online price before a dish is sold online.
-- Whether item and add-on `discount_percent` apply to both prices [suggested yes].
+- Decided 2026-10-18, no longer open: the cap is 10 % (D15); an online price is required with no dine-in fallback, and the migration seeded it with today's price (D16); `discount_percent` applies to both prices (D17).
 - An add-on running out before the dish on a Schedule day: reuse the live option's availability flag (shared kitchen) [suggested for v1], or a per-day Schedule flag.
 - Which options carry the "Ninjasu keeps ₹X, you get ₹Y" line [suggested: only each base option's online price in the required `ITEM` group, computed by the backend on that option alone; add-on options carry no line].
 
