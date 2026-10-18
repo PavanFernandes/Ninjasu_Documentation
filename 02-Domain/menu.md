@@ -126,26 +126,26 @@ An item cannot be published with a net price of zero. The enforcement mechanism 
 
 A SHARED priced group alone does not satisfy this rule — base price must be item-atomic.
 
-## Planned: dine-in price and app price (decided 2026-10-18, not built yet)
+## Planned: dine-in price and online price (decided 2026-10-18, not built yet)
 
 Nothing in this section is built. The rules above describe the code today: the customer app, POS and counter sale all read the same `option.price`, so the app currently shows the dine-in price with no commission in it. Decision numbers, commission slabs and commission plans live in [schedule-plan.md](../07-Roadmap/schedule-plan.md) (decisions dated 2026-10-17 / 2026-10-18).
 
 **Decided (Samivan, 2026-10-18):**
 
-1. Each add-on option keeps its current price as the **dine-in price** and gains an **app price**. Items still have no price column; the item price is still the sum of the selected options, with the required `ITEM` group giving the base price, using the price of the channel being sold on.
-2. Ninjasu POS, counter sale and the dine-in guest QR menu read the **dine-in price**. The customer app (Eat Now and Schedule) reads the **app price**. The restaurant sets the app price.
-3. **App-price cap:** one global platform setting, "max app price over dine-in price" (a percentage). No per-restaurant setting. A save that puts an app price above dine-in price + cap % is refused with a clear message. If Ninjasu tightens the setting later, options already above it are flagged and their dishes are hidden from Schedule until fixed.
-4. **Who edits the dine-in price:** only the Ninjasu admin, for every shop with or without POS (set at onboarding from the printed menu, changed on the restaurant's request). The restaurant edits the app price. Every price change is audited.
-5. Commission is never built into a menu price and never shown as "restaurant price + X %". It is computed on the order from the restaurant's commission plan (schedule-plan.md). If Ninjasu changes its commission, app prices are updated by hand; nothing is recomputed automatically.
-6. The restaurant menu editor shows a read-only line next to each app price: "Ninjasu keeps ₹X, you get ₹Y", computed from the restaurant's plan. Commission is per unit on the app price including the chosen add-ons (schedule-plan.md #45), so a line on an add-on option alone would show the wrong commission; which options carry the line is open (below).
+1. Each add-on option keeps its current price as the **dine-in price** and gains an **online price**. Items still have no price column; the item price is still the sum of the selected options, with the required `ITEM` group giving the base price, using the price of the channel being sold on.
+2. Ninjasu POS, counter sale and the dine-in guest QR menu read the **dine-in price**. The customer app (Eat Now and Schedule) reads the **online price**. The restaurant sets the online price.
+3. **Online-price cap:** one global platform setting, "max online price over dine-in price" (a percentage). No per-restaurant setting. A save that puts an online price above dine-in price + cap % is refused with a clear message. If Ninjasu tightens the setting later, options already above it are flagged and their dishes are hidden from Schedule until fixed.
+4. **Who edits the dine-in price:** only the Ninjasu admin, for every shop with or without POS (set at onboarding from the printed menu, changed on the restaurant's request). The restaurant edits the online price. Every price change is audited.
+5. Commission is never built into a menu price and never shown as "restaurant price + X %". It is computed on the order from the restaurant's commission plan (schedule-plan.md). If Ninjasu changes its commission, online prices are updated by hand; nothing is recomputed automatically.
+6. The restaurant menu editor shows a read-only line next to each online price: "Ninjasu keeps ₹X, you get ₹Y", computed from the restaurant's plan. Commission is per unit on the online price including the chosen add-ons (schedule-plan.md #45), so a line on an add-on option alone would show the wrong commission; which options carry the line is open (below).
 
 **Open (suggestion in brackets):**
 
 - The cap percentage [suggested 10 %, roughly the median premium restaurants add on Swiggy/Zomato today].
-- Empty app price: fall back to the dine-in price [suggested, so Eat Now looks unchanged until a restaurant sets app prices], or require an app price before a dish is sold online.
+- Empty online price: fall back to the dine-in price [suggested, so Eat Now looks unchanged until a restaurant sets online prices], or require an online price before a dish is sold online.
 - Whether item and add-on `discount_percent` apply to both prices [suggested yes].
 - An add-on running out before the dish on a Schedule day: reuse the live option's availability flag (shared kitchen) [suggested for v1], or a per-day Schedule flag.
-- Which options carry the "Ninjasu keeps ₹X, you get ₹Y" line [suggested: only each base option's app price in the required `ITEM` group, computed by the backend on that option alone; add-on options carry no line].
+- Which options carry the "Ninjasu keeps ₹X, you get ₹Y" line [suggested: only each base option's online price in the required `ITEM` group, computed by the backend on that option alone; add-on options carry no line].
 
 ## Related decisions
 

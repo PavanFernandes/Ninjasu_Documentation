@@ -325,27 +325,27 @@ staff `assignDelivery` needed a new guard to refuse SCHEDULED. The new-order pus
 > - Paid add-ons ARE allowed on Schedule dishes; the "no paid add-ons" proposal is rejected.
 > - `scheduled_menu_item` keeps only stock and availability (`stock_qty`, `reserved_qty`, `order_until`, `active`, plus `copied_from_id` etc.) and has **no `split_price`**. Prices come from the add-on options (P19).
 > - The price-preview endpoint built on split price is dropped.
-> **Verdict:** `proceed`. P12's `schedule_price` and P15 (b)'s "split-price edit" now read as "app-price edit".
+> **Verdict:** `proceed`. P12's `schedule_price` and P15 (b)'s "split-price edit" now read as "online-price edit".
 
 ## P19 — two prices per option; commission on the order, never in the menu
 
-> **Proposal:** each add-on option carries a **dine-in price** and an **app price**. Ninjasu POS, counter sale and the guest QR menu show dine-in; the customer app (Eat Now and Schedule) shows app. The restaurant sets the app price. Commission is computed on the order.
+> **Proposal:** each add-on option carries a **dine-in price** and an **online price**. Ninjasu POS, counter sale and the guest QR menu show dine-in; the customer app (Eat Now and Schedule) shows app. The restaurant sets the online price. Commission is computed on the order.
 > **Failure scenarios:**
 > - (a) A commission built into each option ("restaurant price + %") rounds per option and compounds across add-ons; the customer sees a derived number nobody chose.
-> - (b) A rate change recomputes every app price at once: thousands of menu prices move overnight without the restaurant touching them (P17's midnight case).
+> - (b) A rate change recomputes every online price at once: thousands of menu prices move overnight without the restaurant touching them (P17's midnight case).
 > - (c) The restaurant cannot see in the app the price it set, so price complaints have no owner.
 > **Mitigation (decided 2026-10-18):**
 > - Commission is computed on the order, never shown in or built into a menu item. The app never displays "restaurant price + 10%".
-> - If Ninjasu changes its commission, app prices are updated by hand; nothing is recomputed automatically.
-> - The restaurant menu editor shows a read-only line next to each app price: "Ninjasu keeps RsX, you get RsY", computed from the restaurant's plan (P21).
+> - If Ninjasu changes its commission, online prices are updated by hand; nothing is recomputed automatically.
+> - The restaurant menu editor shows a read-only line next to each online price: "Ninjasu keeps RsX, you get RsY", computed from the restaurant's plan (P21).
 > **Verdict:** `proceed`.
 
 ## P20 — commission is a flat-rupee slab per item unit
 
-> **Proposal:** commission per unit from a slab on the unit's app price including the add-ons chosen for that unit; × quantity; order commission = sum of lines; restaurant payout = item total at app prices − commission. Delivery and packaging fees excluded; GST on commission charged extra.
+> **Proposal:** commission per unit from a slab on the unit's online price including the add-ons chosen for that unit; × quantity; order commission = sum of lines; restaurant payout = item total at online prices − commission. Delivery and packaging fees excluded; GST on commission charged extra.
 > **Standard slab:**
 >
-> | Unit app price | Commission per unit |
+> | Unit online price | Commission per unit |
 > |---|---|
 > | Rs0-99 | Rs5 |
 > | Rs100-149 | Rs10 |
@@ -377,14 +377,14 @@ staff `assignDelivery` needed a new guard to refuse SCHEDULED. The new-order pus
 > - Each order snapshots the plan id + version and the per-line commission; later plan changes never alter past orders.
 > - The assignment keeps the existing ideas from decision 22 / 2a.4: scope, `effective_from`, notice check, `consent_ref` (the signed agreement's reference).
 > - This supersedes the 2a.4 percentage model (`commission_rate.rate_percent` per shop/area, `CommissionRateResolver`, `rateAt`), which has no production caller yet.
-> - Onboarding agreement (handled outside the code): plan name + version with the slab table attached, notice period, app-price cap, refund handling, payout schedule, GST on commission. Legal/CA review of the text is needed.
+> - Onboarding agreement (handled outside the code): plan name + version with the slab table attached, notice period, online-price cap, refund handling, payout schedule, GST on commission. Legal/CA review of the text is needed.
 > **Verdict:** `proceed with conditions`. Case (c) still needs an explicit rule.
 
-## P22 — one global app-price cap, outside the commission math
+## P22 — one global online-price cap, outside the commission math
 
-> **Proposal:** one platform setting "max app price over dine-in price" (%). A save that puts an app price above dine-in + cap% is refused with a clear message.
+> **Proposal:** one platform setting "max online price over dine-in price" (%). A save that puts an online price above dine-in + cap% is refused with a clear message.
 > **Why global:** the cap is a customer promise ("the app is never much dearer than the restaurant"); a per-restaurant setting becomes a negotiation and the promise stops being one rule.
-> **Why outside the commission:** parity is NOT part of the commission math. Commission depends on the app price only; the cap is a validation on save. Mixing them (lower commission for parity) makes commission depend on two prices and rewards moving the dine-in price (P23).
+> **Why outside the commission:** parity is NOT part of the commission math. Commission depends on the online price only; the cap is a validation on save. Mixing them (lower commission for parity) makes commission depend on two prices and rewards moving the dine-in price (P23).
 > **Failure scenarios:**
 > - (a) Ninjasu tightens the cap later: items already above it stay on sale at the old premium.
 > - (b) The cap is checked only in the form and not on the API.
@@ -394,7 +394,7 @@ staff `assignDelivery` needed a new guard to refuse SCHEDULED. The new-order pus
 ## P23 — gaming risk for restaurants not on Ninjasu POS: dine-in edit gating
 
 > **Failure scenarios:**
-> - (a) The cap is relative to the dine-in price. A restaurant that does not bill dine-in on Ninjasu POS can raise its dine-in price in Ninjasu at no cost (no walk-in customer is ever billed at it), which raises the cap headroom, then raise its app price. The cap would hold only on paper.
+> - (a) The cap is relative to the dine-in price. A restaurant that does not bill dine-in on Ninjasu POS can raise its dine-in price in Ninjasu at no cost (no walk-in customer is ever billed at it), which raises the cap headroom, then raise its online price. The cap would hold only on paper.
 > - (b) (added 2026-10-18) `posEnabled` is an owner toggle (`Shop.java:101`; owner-only PATCH `/api/shops/{id}/pos-settings`, `ShopTableServiceImpl.setPosEnabled`). A restaurant can turn POS on, raise the dine-in price and turn POS off again, so a gate that reads the toggle alone holds only on paper.
 > **Mitigation (decided 2026-10-18):**
 > - **POS not enabled:** the restaurant CANNOT edit the dine-in price. Only Ninjasu admin can, set at onboarding from the printed menu.
@@ -402,7 +402,7 @@ staff `assignDelivery` needed a new guard to refuse SCHEDULED. The new-order pus
 > - Every price change (dine-in and app) is audited.
 > - Side benefit: a reason for restaurants to adopt Ninjasu POS.
 > **Residual risk (not closed):** a POS-enabled restaurant could raise the POS price and bill walk-ins outside Ninjasu; the audit trail makes the change visible, nothing more. A non-POS restaurant whose printed menu changes must ask Ninjasu to update the dine-in price.
-> **Revised 2026-10-18 (Samivan; closes (b) and D23):** the POS gate is withdrawn. Only the Ninjasu admin edits the dine-in price, for every shop, POS or not; the restaurant edits only the app price. This closes (a) and (b) without needing any POS signal. Cost: POS restaurants ask Ninjasu for dine-in price changes, and the existing restaurant menu editor must write the app price, not the dine-in price.
+> **Revised 2026-10-18 (Samivan; closes (b) and D23):** the POS gate is withdrawn. Only the Ninjasu admin edits the dine-in price, for every shop, POS or not; the restaurant edits only the online price. This closes (a) and (b) without needing any POS signal. Cost: POS restaurants ask Ninjasu for dine-in price changes, and the existing restaurant menu editor must write the online price, not the dine-in price.
 > **Verdict:** `proceed` (updated 2026-10-18).
 
 ## P24 — Schedule-menu permissions
@@ -415,7 +415,7 @@ staff `assignDelivery` needed a new guard to refuse SCHEDULED. The new-order pus
 ## Alternatives rejected (review 4)
 
 - **Per-option markup, "restaurant price + %":** derived prices per option, rounding compounds across add-ons, every rate change rewrites the menu (P19).
-- **Parity tiers inside the commission** (lower commission when app price equals dine-in): couples two concerns and rewards inflating the dine-in price; the global cap (P22) and edit gating (P23) handle parity instead.
+- **Parity tiers inside the commission** (lower commission when online price equals dine-in): couples two concerns and rewards inflating the dine-in price; the global cap (P22) and edit gating (P23) handle parity instead.
 - **Bespoke per-restaurant slabs:** unmanageable rule sets and agreements (P21); a one-off is a named plan.
 - **One split price per dish per day:** cannot express sizes or paid add-ons (P18).
 
@@ -424,7 +424,7 @@ staff `assignDelivery` needed a new guard to refuse SCHEDULED. The new-order pus
 Suggestions in brackets are suggestions, not decisions.
 
 - The cap percentage [10%, roughly the median premium restaurants add on Swiggy/Zomato today].
-- Empty app price: fall back to the dine-in price [suggested, so Eat Now looks unchanged until a restaurant sets app prices], or require an app price before a dish is sold online.
+- Empty online price: fall back to the dine-in price [suggested, so Eat Now looks unchanged until a restaurant sets online prices], or require an online price before a dish is sold online.
 - Whether item/add-on discount percentages apply to both prices [suggested yes], and whether the slab uses the price after a restaurant-funded discount [suggested yes; a Ninjasu-funded coupon never changes commission].
 - Same commission plan for Schedule and Eat Now, or separate plans per fulfilment type.
 - Whether Eat Now orders also record commission and payout snapshots at order time [suggested yes, prices unchanged].
