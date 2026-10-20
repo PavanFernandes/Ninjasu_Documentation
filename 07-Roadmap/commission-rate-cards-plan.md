@@ -1,6 +1,6 @@
 # 2b.13 Commission rate cards — implementation plan
 
-Status: **Ready for Samivan's approval** (2026-10-20): devil's advocate + four Codex reviews folded in. Replaces the 2a.4 percentage `commission_rate` model.
+Status: **BUILT 2026-10-20 on `feature/schedule-2b13`** (backend 5 commits, web 1 commit; local only: not pushed, not merged, not deployed). Devil's advocate + four Codex reviews were folded into the plan, and a fifth Codex review of the code found three issues, all fixed. See "As built" at the end. Replaces the 2a.4 percentage `commission_rate` model.
 Decisions: [schedule-plan.md](schedule-plan.md) #45, #46, D17-D26; task row 2b.13 in
 [schedule-implementation-order.md](schedule-implementation-order.md).
 
@@ -118,3 +118,35 @@ Review checks that passed (Codex, files read): COD and online checkout both go t
 2. Merge order: backend final PR first (prod auto-deploy), then web.
 3. After deploy: Samivan assigns Standard v1 to pilot shops on `EAT_NOW` (and `SCHEDULE`) from the admin page.
 4. S4 DROP script: DO NOT RUN NOW.
+
+## As built (2026-10-20)
+
+**Branches:** backend and web `feature/schedule-2b13` from `origin/main`. Backend commits: S1, S2, S3, S3b+S4, review fixes. Web: S5. Nothing pushed.
+
+**Hand-run SQL, in this order, before the backend deploy** (all idempotent; `ScheduleSchemaGuard` fails boot if any object is missing):
+1. `db_manual/commission-rate-card-migration.sql` (cards, versions, slabs, triggers, seeds "No commission" + Standard v1 under fixed ids)
+2. `db_manual/commission-rate-card-assignment-migration.sql` (needs 1)
+3. `db_manual/order-commission-snapshot-migration.sql` (needs 1)
+4. `db_manual/order-invoice-snapshot-migration.sql`
+
+**DO NOT RUN NOW:** `db_manual/commission-rate-drop-DO-NOT-RUN-NOW.sql` (drops the 2a.4 `commission_rate` table; run only after 2b.13 is live and `SELECT count(*) FROM commission_rate` is 0).
+
+**Production note (2026-10-20):** a local `mvnw test` booted the app on the production Neon database (the default datasource) and left three empty, constraint-less tables: `commission_rate_card`, `commission_rate_card_version`, `commission_slab`. SQL file 1 uses `CREATE TABLE IF NOT EXISTS` and adds the constraints, indexes, triggers and seeds on top, so running it repairs them; nothing else was touched. Full-suite runs now exclude the context test: `-Dtest='!NinjaDeliveryServiceApplicationTests'`.
+
+**Admin routes (all under the `/api/admin/**` catch-all):** `commission-rate-cards` (list, get, create, rename `PATCH`, `/{id}/versions`, `POST /preview` for the slab editor), `commission-rate-card-assignments` (state by `shopId`, `/preview`, `/on-default`, assign, `/{id}/cancel`), `commission-rate-card-versions/{id}` (`/affected`, `/move`). Web: `/admin/commission-cards`, `/admin/commission-cards/[id]`, and a Commission tab on the shop page.
+
+**Differences from the plan text:**
+- `POST /commission-rate-cards/preview` (stateless, `@NotAudited`) was added so the slab editor shows live commission and violations without the web app re-implementing the calculator.
+- A `Clock` bean (`config/ClockConfig`) was added. The assign, cancel and bulk-move services read "now" after the shop lock is held, so a lock wait cannot shorten the 24-hour notice or let a change that has started be cancelled (Codex review finding).
+- The shared rupee helper the plan put in S3 is `CommissionSlabCalculator` itself; there is no separate class.
+- Snapshot columns are guarded by CHECK constraints (version and total both set or both null, never negative; regime values match `GstRegime`).
+- A cancelled assignment still occupies its (shop, channel, start) key; a new row at exactly that moment is rejected with `DUPLICATE_EFFECTIVE_FROM`.
+- The "shops on the default card" list says "Never assigned" (implicit) or "Set to no commission" (assigned on purpose).
+
+**Verified:** backend suite with the context test excluded (990 tests, 0 failures), JPQL parse-checked offline, web `tsc` and `eslint` clean, 13 pure-logic web specs, static render of the list, detail, shop panel and slab editor.
+**Not verified (no scratch database, browser or device):** the SQL scripts and trigger behaviour against Postgres; JPQL result correctness (parse only); every dialog (they render in a portal); any real click-through. Run both on a Neon branch before merging.
+
+**Open before go-live:**
+- `platform_billing_config` row 1 must exist; if it is missing, orders still complete but carry no platform legal facts (a warning is logged).
+- Question H (online GST basis, CA task 0.7) is still undecided; the order snapshots store no tax amounts.
+- Restaurant legal name, GST state code on shops and delivery state on orders are still missing (follow-ups for 0.7 and onboarding).
