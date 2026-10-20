@@ -128,6 +128,7 @@ Review checks that passed (Codex, files read): COD and online checkout both go t
 2. `db_manual/commission-rate-card-assignment-migration.sql` (needs 1)
 3. `db_manual/order-commission-snapshot-migration.sql` (needs 1)
 4. `db_manual/order-invoice-snapshot-migration.sql`
+5. `db_manual/platform-seller-profile-migration.sql` (the platform's own seller identities; copies the old single `platform_billing_config` row if one exists; adds `orders.platform_profile_id`). After it runs, fill the profile through `POST /api/admin/platform-seller-profiles` (or the INSERT template at the bottom of the file); with no active default profile, orders complete without platform facts and a warning is logged.
 
 **DO NOT RUN NOW:** `db_manual/commission-rate-drop-DO-NOT-RUN-NOW.sql` (drops the 2a.4 `commission_rate` table; run only after 2b.13 is live and `SELECT count(*) FROM commission_rate` is 0).
 
@@ -147,6 +148,6 @@ Review checks that passed (Codex, files read): COD and online checkout both go t
 **Not verified (no scratch database, browser or device):** the SQL scripts and trigger behaviour against Postgres; JPQL result correctness (parse only); every dialog (they render in a portal); any real click-through. Run both on a Neon branch before merging.
 
 **Open before go-live:**
-- `platform_billing_config` row 1 must exist; if it is missing, orders still complete but carry no platform legal facts (a warning is logged).
+- Add the platform seller profile (legal name, GSTIN, address, invoice prefix); `platform_billing_config` is replaced by the many-row `platform_seller_profile` table and stays unread (drop later, DO NOT RUN NOW).
 - Question H (online GST basis, CA task 0.7) is still undecided; the order snapshots store no tax amounts.
 - Restaurant legal name, GST state code on shops and delivery state on orders are still missing (follow-ups for 0.7 and onboarding).
