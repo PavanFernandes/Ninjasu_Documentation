@@ -144,7 +144,9 @@ Review checks that passed (Codex, files read): COD and online checkout both go t
 - A cancelled assignment still occupies its (shop, channel, start) key; a new row at exactly that moment is rejected with `DUPLICATE_EFFECTIVE_FROM`.
 - The "shops on the default card" list says "Never assigned" (implicit) or "Set to no commission" (assigned on purpose).
 
-**Geld changes (2026-10-21, backend `69017a8`):** side table, `currency_code` on cards, `NOT VALID` constraints, renames; suite 1134 tests, 0 failures (context test excluded). The line below is the earlier 2026-10-20 run.
+**Geld changes (2026-10-21, backend `69017a8`):** side table, `currency_code` on cards, `NOT VALID` constraints, renames; suite 1036 tests, 0 failures after the review fixes (context test excluded). The line below is the earlier 2026-10-20 run.
+
+**Pre-SQL review (2026-10-21):** Claude read all five SQL files; a blind read-only Codex pass reviewed commit `69017a8`. Two HIGH findings, both fixed: (1) if the new backend boots before SQL file 3 runs, Hibernate adds `commission_rate_card_version_id` beside the old column and the old CHECK/FK reject new orders; file 3 now copies the values across and drops the old column in that case; (2) a card in one currency could be assigned to a shop in another; `assign` now refuses with `CURRENCY_MISMATCH` (the system default card fits any shop). Also: file 3 ends with `RESET lock_timeout`; file 5's rollback comment corrected.
 
 **Verified:** backend suite with the context test excluded (990 tests, 0 failures), JPQL parse-checked offline, web `tsc` and `eslint` clean, 13 pure-logic web specs, static render of the list, detail, shop panel and slab editor.
 **Not verified (no scratch database, browser or device):** the SQL scripts and trigger behaviour against Postgres; JPQL result correctness (parse only); every dialog (they render in a portal); any real click-through. Run both on a Neon branch before merging.

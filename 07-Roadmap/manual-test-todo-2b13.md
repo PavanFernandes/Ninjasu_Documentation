@@ -11,14 +11,14 @@ anchors:
   - { repo: backend, path: "src/main/java/com/example/ninja/repository/CommissionRateCardAssignmentRepository.java" }
   - { repo: web, path: "src/features/admin/components/commission/ShopCommissionPanel.tsx" }
   - { repo: web, path: "src/features/admin/components/commission/ChangeCardDialog.tsx" }
-verified_against: "backend and Ninjasu_Web feature/schedule-2b13 (2026-10-20); nothing below has been run"
-updated: 2026-10-20
+verified_against: "backend 69017a8 and Ninjasu_Web bf29f54 on feature/schedule-2b13 (2026-10-21); nothing below has been run"
+updated: 2026-10-21
 ---
 
-# Manual test TODO: 2b.13 (2026-10-20)
+# Manual test TODO: 2b.13 (updated 2026-10-21)
 
-Owner: **S** = Samivan, **C** = Claude. Nothing below has been run. What IS verified in code: backend suite 1030 tests with the context test excluded, web `tsc` and ESLint clean, 13 pure specs, a static render of the list, detail, shop panel and slab editor. What no check could prove: the SQL on a real Postgres, JPQL results, locks under two admins, every dialog, and the screens in a browser.
-**Write only against a Neon branch, never prod.** The backend's default datasource is production; a bare `mvnw test` once booted the app on prod. Run tests as `./mvnw -o test "-Dtest=!NinjaDeliveryServiceApplicationTests"`.
+Owner: **S** = Samivan, **C** = Claude. Nothing below has been run. What IS verified in code: backend suite 1036 tests with the context test excluded, web `tsc` and ESLint clean, 13 pure specs, a static render of the list, detail, shop panel and slab editor. What no check could prove: the SQL on a real Postgres, JPQL results, locks under two admins, every dialog, and the screens in a browser.
+**Write only against a Neon branch, never prod.** The backend's default datasource is production; a bare `mvnw test` once booted the app on prod. Run tests as `./mvnw test "-Dtest=!NinjaDeliveryServiceApplicationTests"` (no `-o`: the offline cache lacks the Spring Boot parent).
 
 ## What a Neon branch is
 A Neon branch is an instant copy of the production database (copy-on-write, so it costs almost nothing). Writes to the branch never touch prod, and you delete it when finished. Create it in the Neon console: project, Branches, Create branch, parent `main` (production), then copy its connection string.
@@ -41,6 +41,8 @@ A Neon branch is an instant copy of the production database (copy-on-write, so i
 - [ ] **S** After file 3: `select conname, convalidated from pg_constraint where conrelid in ('orders'::regclass, 'order_lines'::regclass) and conname like '%commission%'` shows `convalidated = true` for all three.
 - [ ] **S** The default card "No commission" has version 1 with its one slab 0/0/0, and `currency_code = 'INR'`.
 - [ ] **S** Upgrade path (database that ran the OLD files 1-3): rerun file 1 then file 3. `commission_rate_card.currency_code` exists and `orders.commission_card_version_id` is renamed to `commission_rate_card_version_id`, with no duplicate constraints.
+- [ ] **S** Backend-started-first case (on a second branch of prod, before running file 3): boot the new backend once so Hibernate adds `commission_rate_card_version_id` beside the old column, then run file 3. Afterwards only the new column exists, the three constraints exist once, and an order insert works. (Codex review finding, 2026-10-21.)
+- [ ] **S** After the last file, `show lock_timeout;` is back to its default (file 3 ends with `RESET lock_timeout`).
 - [ ] **S** `update commission_rate_card set currency_code = 'USD' where name = 'Standard'` fails (currency is immutable).
 - [ ] **S** `order_seller_snapshot` rejects update, delete and truncate (append-only).
 - [ ] **S** Bare-table repair: on a second branch, let the backend boot once BEFORE running file 1 (Hibernate creates empty shell tables), then run file 1: the constraints, indexes, triggers and seeds appear (`\d commission_slab` shows the unique index and the trigger).
@@ -66,6 +68,7 @@ A Neon branch is an instant copy of the production database (copy-on-write, so i
 
 ## E. Assignments API: the rules, with real data
 - [ ] Shop with no row: `GET .../commission-rate-card-assignments?shopId=` shows the default card on both channels, `latestAssignmentId` null, first-card eligible.
+- [ ] Create a card with `currencyCode: "USD"` and assign it to an INR shop: refused with `CURRENCY_MISMATCH`, nothing written. Assigning the system default card to any shop is allowed.
 - [ ] Assign Standard v1 starting NOW to a never-assigned shop: accepted (first real card).
 - [ ] Assign Standard v2 to the same shop starting in 1 hour: refused (24h notice); at exactly 24h ahead: accepted; "apply immediately" without a reason: refused, with a reason: accepted.
 - [ ] A start earlier than or equal to the shop's latest scheduled change: refused (`NOT_AFTER_EXISTING`).
@@ -79,16 +82,16 @@ A Neon branch is an instant copy of the production database (copy-on-write, so i
 - [ ] `GET .../on-default?channel=EAT_NOW` lists shops with no row ("Never assigned") and shops assigned the default on purpose ("Set to no commission"); a shop with a real card is absent; page size above 100 or page above 1000 refused.
 
 ## F. Checkout snapshots (customer app or API)
-- [ ] Order from a shop with NO assignment: `orders.commission_card_version_id` = the default card's version, `commission_total` = 0.00, every line 0.00; `grand_total` identical to before this feature.
+- [ ] Order from a shop with NO assignment: `orders.commission_rate_card_version_id` = the default card's version, `commission_total` = 0.00, every line 0.00; `grand_total` identical to before this feature.
 - [ ] Order from a shop on Standard v1 with a 2-addon line (200 + 30) x3: unit 20.00, line 60.00, total 60.00; delivery fee not in the commission.
 - [ ] Reassign the shop to v2 and place a new order: the OLD order keeps v1 and its figures.
 - [ ] A scheduled (future) change is NOT used by an order placed today; once its start time passes it is.
 - [ ] A cancelled future change is never used.
 - [ ] Online (Razorpay) checkout and cash-on-delivery both write the same snapshot.
-- [ ] A GROCERY or PRODUCT cart order: commission columns NULL, seller facts still filled.
-- [ ] POS, guest QR and counter-sale orders: all commission and seller columns NULL.
-- [ ] Seller facts on a customer order: restaurant GSTIN, regime, address, state match the shop at order time; edit the shop's GSTIN afterwards: the old order does not change.
-- [ ] Platform facts: with a default active profile, `platform_profile_id`, legal name, GSTIN and address are filled; edit the profile afterwards: old orders keep the old text.
+- [ ] A GROCERY or PRODUCT cart order: commission columns NULL, an `order_seller_snapshot` row still written.
+- [ ] POS, guest QR and counter-sale orders: all commission columns NULL and no `order_seller_snapshot` row.
+- [ ] Seller facts on a customer order (`order_seller_snapshot`): `seller_gstin`, `seller_gst_regime`, `seller_address`, `seller_state` match the shop at order time; edit the shop's GSTIN afterwards: the old row does not change, and an UPDATE or DELETE on it fails.
+- [ ] Platform facts: with a default active profile, `platform_seller_profile_id`, `platform_legal_name`, `platform_gstin` and `platform_address` on the snapshot row are filled; edit the profile afterwards: old orders keep the old text.
 - [ ] With NO active default profile: the order still completes and the backend log shows the warning.
 
 ## G. Platform seller profiles API
