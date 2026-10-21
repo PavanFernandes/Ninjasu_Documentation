@@ -31,16 +31,16 @@ A Neon branch is an instant copy of the production database (copy-on-write, so i
 - [ ] **C** Test from `feature/schedule-2b13` in backend and Ninjasu_Web.
 
 ## B. SQL files, on the branch, in this order (folder `ninja delivery service java/db_manual/`)
-- [ ] **S** 1 `commission-rate-card-migration.sql` — runs without error; `select name, is_system_default from commission_rate_card` shows "No commission" (default) and "Standard"; `select count(*) from commission_slab` is 7 (1 + 6).
+- [x] **S** (ran 2026-10-21 on endpoint ep-morning-violet-a1f3okbi, 94 orders; cards "No commission" + "Standard" both INR, 7 slabs, verified read-only) 1 `commission-rate-card-migration.sql` — runs without error; `select name, is_system_default from commission_rate_card` shows "No commission" (default) and "Standard"; `select count(*) from commission_slab` is 7 (1 + 6).
 - [ ] **S** Run file 1 a SECOND time: no error and the same counts (seeds are not duplicated).
-- [ ] **S** 2 `commission-rate-card-assignment-migration.sql`.
-- [ ] **S** 3 `order-commission-snapshot-migration.sql`.
-- [ ] **S** 4 `order-invoice-snapshot-migration.sql`.
-- [ ] **S** 5 `platform-seller-profile-migration.sql` — if the old `platform_billing_config` had a row it appears as profile `PRIMARY`, default and active; otherwise the table is empty.
+- [x] **S** 2 `commission-rate-card-assignment-migration.sql` (ran 2026-10-21).
+- [x] **S** 3 `order-commission-snapshot-migration.sql` (ran 2026-10-21; column is `commission_rate_card_version_id`, three constraints validated).
+- [x] **S** 4 `order-invoice-snapshot-migration.sql` (ran 2026-10-21; table and both triggers exist, 0 rows).
+- [x] **S** (ran 2026-10-21; table empty, FK from the snapshot exists) 5 `platform-seller-profile-migration.sql` — if the old `platform_billing_config` had a row it appears as profile `PRIMARY`, default and active; otherwise the table is empty.
 - [ ] **S** Rerun files 2 to 5 once each: no error, no duplicates.
-- [ ] **S** After file 3: `select conname, convalidated from pg_constraint where conrelid in ('orders'::regclass, 'order_lines'::regclass) and conname like '%commission%'` shows `convalidated = true` for all three.
+- [x] **S** (verified 2026-10-21, all true) After file 3: `select conname, convalidated from pg_constraint where conrelid in ('orders'::regclass, 'order_lines'::regclass) and conname like '%commission%'` shows `convalidated = true` for all three.
 - [ ] **S** The default card "No commission" has version 1 with its one slab 0/0/0, and `currency_code = 'INR'`.
-- [ ] **S** Upgrade path (database that ran the OLD files 1-3): rerun file 1 then file 3. `commission_rate_card.currency_code` exists and `orders.commission_card_version_id` is renamed to `commission_rate_card_version_id`, with no duplicate constraints.
+- [x] **S** (done 2026-10-21: old column gone, new column present, no duplicate constraints) Upgrade path (database that ran the OLD files 1-3): rerun file 1 then file 3. `commission_rate_card.currency_code` exists and `orders.commission_card_version_id` is renamed to `commission_rate_card_version_id`, with no duplicate constraints.
 - [ ] **S** Backend-started-first case (on a second branch of prod, before running file 3): boot the new backend once so Hibernate adds `commission_rate_card_version_id` beside the old column, then run file 3. Afterwards only the new column exists, the three constraints exist once, and an order insert works. (Codex review finding, 2026-10-21.)
 - [ ] **S** After the last file, `show lock_timeout;` is back to its default (file 3 ends with `RESET lock_timeout`).
 - [ ] **S** `update commission_rate_card set currency_code = 'USD' where name = 'Standard'` fails (currency is immutable).
