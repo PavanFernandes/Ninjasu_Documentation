@@ -74,7 +74,7 @@ Validation of a version's slabs: at least one slab; the first `from_amount` is 0
 ### S3b Backend — order invoice snapshot (Samivan 2026-10-20: in 2b.13, same for Eat Now and Schedule)
 Freeze at order time everything a later invoice, payout statement or GST return needs, so nothing is re-read from live, editable records (Codex payout research 2026-10-19).
 - One shared step (e.g. `OrderSellerSnapshotBuilder`) called by `OrderAssembler` for customer orders; the Schedule checkout (2b.3/2b.5) must call the same step, never a copy.
-- New nullable `orders` columns (hand-run SQL `db_manual/order-invoice-snapshot-migration.sql`, added to `ScheduleSchemaGuard` and to the pre-deploy SQL list): `restaurant_gstin` (`Restaurant.gstNumber`, NULL = unregistered), `restaurant_gst_regime` (`Shop.gstRegime`), `restaurant_address`, `restaurant_state` (`Shop` address fields); `platform_legal_name`, `platform_gstin`, `platform_address` (`PlatformBillingConfig`). The trade name is already frozen in `orders.shop_name`.
+- **Superseded 2026-10-21 (Data model review, PLACE-1):** these facts are one row per order in the side table `order_seller_snapshot` (`seller_*` columns, `platform_seller_profile_id`), not columns on `orders`. The original design follows for history. New nullable `orders` columns (hand-run SQL `db_manual/order-invoice-snapshot-migration.sql`, added to `ScheduleSchemaGuard` and to the pre-deploy SQL list): `restaurant_gstin` (`Restaurant.gstNumber`, NULL = unregistered), `restaurant_gst_regime` (`Shop.gstRegime`), `restaurant_address`, `restaurant_state` (`Shop` address fields); `platform_legal_name`, `platform_gstin`, `platform_address` (`PlatformBillingConfig`). The trade name is already frozen in `orders.shop_name`.
 - Per line, the existing snapshot (`tax_class_code`, `tax_price_mode`, `tax_rate_percent`, `line_total_snapshot`) is the frozen tax classification; whether a line is a 9(5) restaurant service is read from its frozen `tax_class_code` (`RESTAURANT_SERVICE`). No new line columns.
 - **No tax amounts are computed or stored in 2b.13.** Customer orders charge no GST today (`OrderAssembler`: `grand_total = subtotal + delivery fee`), and the dine-in `GstTaxEngine` taxes by the restaurant's GST regime, which is the wrong basis for 9(5) online orders (Ninjasu owes the food GST whatever the restaurant's regime). The online tax basis (prices GST-inclusive, or 5% added at checkout) is a separate decision (open question H) and must be settled before go-live.
 - Data gaps found (not invented here; recorded for CA task 0.7 / onboarding): no **restaurant legal name** field (only the trade name); `Shop.state` is free text, not a GST state code; orders store no **delivery state** (only lat/lng + formatted address), which the place-of-supply rule may need. Each is a follow-up, not a 2b.13 build item, unless Samivan pulls it in.
@@ -126,9 +126,9 @@ Review checks that passed (Codex, files read): COD and online checkout both go t
 **Hand-run SQL, in this order, before the backend deploy** (all idempotent; `ScheduleSchemaGuard` fails boot if any object is missing):
 1. `db_manual/commission-rate-card-migration.sql` (cards, versions, slabs, triggers, seeds "No commission" + Standard v1 under fixed ids)
 2. `db_manual/commission-rate-card-assignment-migration.sql` (needs 1)
-3. `db_manual/order-commission-snapshot-migration.sql` (needs 1)
-4. `db_manual/order-invoice-snapshot-migration.sql`
-5. `db_manual/platform-seller-profile-migration.sql` (the platform's own seller identities; copies the old single `platform_billing_config` row if one exists; adds `orders.platform_profile_id`). After it runs, fill the profile through `POST /api/admin/platform-seller-profiles` (or the INSERT template at the bottom of the file); with no active default profile, orders complete without platform facts and a warning is logged.
+3. `db_manual/order-commission-snapshot-migration.sql` (needs 1; renames `orders.commission_card_version_id` to `commission_rate_card_version_id` on a database that ran the old file; constraints are `NOT VALID` then validated)
+4. `db_manual/order-invoice-snapshot-migration.sql` (creates the append-only side table `order_seller_snapshot`)
+5. `db_manual/platform-seller-profile-migration.sql` (the platform's own seller identities; copies the old single `platform_billing_config` row if one exists; adds the FK from `order_seller_snapshot.platform_seller_profile_id`; needs 4). After it runs, fill the profile through `POST /api/admin/platform-seller-profiles` (or the INSERT template at the bottom of the file); with no active default profile, orders complete without platform facts and a warning is logged.
 
 **DO NOT RUN NOW:** `db_manual/commission-rate-drop-DO-NOT-RUN-NOW.sql` (drops the 2a.4 `commission_rate` table; run only after 2b.13 is live and `SELECT count(*) FROM commission_rate` is 0).
 
@@ -143,6 +143,8 @@ Review checks that passed (Codex, files read): COD and online checkout both go t
 - Snapshot columns are guarded by CHECK constraints (version and total both set or both null, never negative; regime values match `GstRegime`).
 - A cancelled assignment still occupies its (shop, channel, start) key; a new row at exactly that moment is rejected with `DUPLICATE_EFFECTIVE_FROM`.
 - The "shops on the default card" list says "Never assigned" (implicit) or "Set to no commission" (assigned on purpose).
+
+**Geld changes (2026-10-21, backend `69017a8`):** side table, `currency_code` on cards, `NOT VALID` constraints, renames; suite 1134 tests, 0 failures (context test excluded). The line below is the earlier 2026-10-20 run.
 
 **Verified:** backend suite with the context test excluded (990 tests, 0 failures), JPQL parse-checked offline, web `tsc` and `eslint` clean, 13 pure-logic web specs, static render of the list, detail, shop panel and slab editor.
 **Not verified (no scratch database, browser or device):** the SQL scripts and trigger behaviour against Postgres; JPQL result correctness (parse only); every dialog (they render in a portal); any real click-through. Run both on a Neon branch before merging.
