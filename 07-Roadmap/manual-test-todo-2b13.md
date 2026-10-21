@@ -115,7 +115,7 @@ A Neon branch is an instant copy of the production database (copy-on-write, so i
 - [ ] "Shops on the default card": channel switch never shows the other channel's shops (check with a slow network throttle); paging works; an error shows Retry.
 - [ ] Narrow window: slab rows stack, preview table scrolls inside its box, dialogs do not overflow sideways.
 - [ ] Keyboard: Tab reaches both selects in the change dialog and a screen reader announces "Rate card" and "Version".
-- [ ] No profile screen exists yet: platform profiles are managed through the API or the SQL template.
+- [ ] Platform profiles screen: sidebar "Platform profiles" (/admin/platform-profiles). Empty state text shows while no profile exists; "Add profile" with an empty table makes it the default automatically; invalid GSTIN shows the backend message; editing the default shows both switches locked; a second profile "Default" switch moves the default; the Default and Inactive badges match; light and dark; narrow window.
 
 ## I. Close the phase
 - [ ] **S** Everything above passes, or each failure is logged here with its fix.
@@ -126,4 +126,4 @@ A Neon branch is an instant copy of the production database (copy-on-write, so i
 - [ ] **C** Update `schedule-implementation-order.md` (2b.13 done), the project focus note, and move the open items (GST basis H, restaurant legal name, GST state code, delivery state) to CA task 0.7.
 
 ## Known limits (not defects of this phase)
-Concurrent renames are last-write-wins. A slab can charge more than the unit price (payout can go negative); the rule is undecided. `commission_notice_days` on service areas is no longer used. There is no web screen for platform profiles. No tax amounts are stored (GST basis open question H).
+Concurrent renames are last-write-wins. A slab can charge more than the unit price (payout can go negative); the rule is undecided. `commission_notice_days` on service areas is no longer used. No tax amounts are stored (GST basis open question H).
