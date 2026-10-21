@@ -37,7 +37,7 @@ A Neon branch is an instant copy of the production database (copy-on-write, so i
 - [x] **S** 3 `order-commission-snapshot-migration.sql` (ran 2026-10-21; column is `commission_rate_card_version_id`, three constraints validated).
 - [x] **S** 4 `order-invoice-snapshot-migration.sql` (ran 2026-10-21; table and both triggers exist, 0 rows).
 - [x] **S** (ran 2026-10-21; table empty, FK from the snapshot exists) 5 `platform-seller-profile-migration.sql` — if the old `platform_billing_config` had a row it appears as profile `PRIMARY`, default and active; otherwise the table is empty.
-- [ ] **S** Rerun files 2 to 5 once each: no error, no duplicates.
+- [x] **S** (done 2026-10-21: files 4 and 5 rerun with "already exists, skipping"; counts unchanged: 2 triggers, 3 constraints on the snapshot, 2 checks and 2 unique indexes on the profile table) Rerun files 2 to 5 once each: no error, no duplicates.
 - [x] **S** (verified 2026-10-21, all true) After file 3: `select conname, convalidated from pg_constraint where conrelid in ('orders'::regclass, 'order_lines'::regclass) and conname like '%commission%'` shows `convalidated = true` for all three.
 - [ ] **S** The default card "No commission" has version 1 with its one slab 0/0/0, and `currency_code = 'INR'`.
 - [x] **S** (done 2026-10-21: old column gone, new column present, no duplicate constraints) Upgrade path (database that ran the OLD files 1-3): rerun file 1 then file 3. `commission_rate_card.currency_code` exists and `orders.commission_card_version_id` is renamed to `commission_rate_card_version_id`, with no duplicate constraints.
