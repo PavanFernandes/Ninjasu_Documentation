@@ -16,7 +16,7 @@ This resolves the 22 findings of a Codex review of this plan (C-1 to C-22). Item
 | O-3 | L-5 "manual": what does ops do? (C-6) | Ops edits the slot's own `capacity` for the day and edits it back afterwards. While changed it applies to every date, which is fine because same-day only means one open date. A per-day exception table is added only if this proves too blunt. |
 | O-4 | Existing areas: how are they brought into line with same-day only? (C-7) | Before 2b.2 ships, run `SELECT id, name, advance_days, window_open_day_offset FROM service_area WHERE schedule_enabled` read-only, and set any non-zero value to 0 through the admin screen. |
 
-On 2026-10-22 Samivan said "start with implementation" without answering O-1 to O-4, so the build follows the recommendations above. Each is still to be confirmed before the PR it touches merges: O-2 before PR (b), O-1 before PR (c), O-3 and O-4 before release. "Order from" stays area-level for v1 on the same footing. Ninjasu_Web has no service-area screen, so O-4's fix goes through `PUT /api/admin/service-areas/{areaId}` (admin API, built in 2a), not an admin screen.
+On 2026-10-22 Samivan said "start with implementation" without answering O-1 to O-4, so the build follows the recommendations above. Each is still to be confirmed before the PR it touches merges: O-2 before PR (b) (confirmed 2026-10-23), O-1 before PR (c) (confirmed yes), O-3 and O-4 before release. "Order from" stays area-level for v1 on the same footing. Ninjasu_Web has no service-area screen, so O-4's fix goes through `PUT /api/admin/service-areas/{areaId}` (admin API, built in 2a), not an admin screen.
 
 ### Tables (2b.2): SQL file `db_manual/schedule-menu-migration.sql`, hand-run before deploy (C-18)
 - **`schedule_shop_settings`:**
@@ -163,7 +163,7 @@ An admin area-window edit returns a non-blocking `affectedDishes` warning listin
 - The bulk audit event lists only the dishes that changed, with their shared earlier state in `from` (null when they differed) and `todayOnly` in the metadata.
 - Switching an option back on checks the option belongs to the restaurant unless a Schedule-off row of this restaurant was deleted by the call (that row proves ownership, so an option deleted since can still be switched on).
 - The booked count (`bookedToday`) and the paid-order count of a closure arrive with 2b.6; the count is 0 until then.
-- Permissions follow O-2 as recommended (`menu.view` / `menu.manage`), still to be confirmed by Samivan; SecurityConfig gates the prefix to SHOP or ADMIN.
+- Permissions follow O-2 as recommended (`menu.view` / `menu.manage`), CONFIRMED by Samivan 2026-10-23; SecurityConfig gates the prefix to SHOP or ADMIN.
 
 ### Decided while building PR (a)
 - Named CHECK constraints use the `chk_` prefix like every existing constraint (this spec said `ck_`). The three single-column tables declare an inline `PRIMARY KEY` like every sibling migration (Hibernate's own key on the same column is equivalent), so the spec's `pk_<table>` names exist only for `shop_closure`, whose key `pk_shop_closure (shop_id, closed_on)` replaces the `(closed_on, shop_id)` key Hibernate creates when it runs first. The guard has 9 entries for this file (4 tables, `pk_shop_closure`, 2 CHECKs, 2 indexes).
