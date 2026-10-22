@@ -8,7 +8,7 @@ apps: [backend, web, customer, rider]
 module: "schedule"
 anchors: []
 verified_against: "backend main @ b428324; two read-only code investigations 2026-10-08"
-updated: 2026-10-08
+updated: 2026-10-18
 ---
 
 # Schedule — Phase 1 design review
@@ -87,7 +87,7 @@ verb), not a guessed name. Where something is inference, it is marked *(inferred
 > - **Fix the refund gap:** `doConfirmPayment`'s stock-failure branch sets REFUND_PENDING with no immediate attempt, so the customer waits for the hourly sweep. This path will now be hit more; schedule the refund attempt after commit there.
 > **Verdict:** `proceed with conditions`.
 >
-> **P3a — restaurant cutoff as optional lead minutes (D4, devil's advocate 2026-10-14)**
+> **P3a — restaurant cutoff as optional lead minutes (D4, devil's advocate 2026-10-14)** — *superseded 2026-10-15 by per-dish order-until (plan #15/#16); no `schedule_lead_minutes` column.*
 > - **Rule:** `effective cutoff = min(slot cutoff, slot start - shop lead)`; a NULL lead drops the second term. `shops.schedule_lead_minutes INT NULL`, `CHECK (schedule_lead_minutes BETWEEN 0 AND 240)`. NULL means "no restaurant-specific cutoff", never 0 and never a default 60.
 > - **Failure (a): the cutoff differs per slot.** Lead 90 closes the restaurant for 12:30 at 11:00 but leaves 1:30 open until 12:00, so a restaurant is not simply open or closed. Mitigation: the customer picks the slot first; the restaurant list is evaluated against that slot and greyed with its computed clock time. Phase 4 must not show one per-restaurant "closed" badge.
 > - **Failure (b): a lead shorter than the area's slot cutoff does nothing.** The setting looks saved but has no effect. Mitigation: the shop UI shows the computed clock time per slot, so the owner sees the real result.
@@ -210,9 +210,10 @@ Grounded in backend main @ 7434fd8. Mechanism searches: `computeDeliveryFee`, `c
 > - (f) Razorpay keeps ~2.36% on every refund, so a free cancel loses money unless commission is computed on delivered orders only.
 > **Mitigation (after the owner decides the money flow):**
 > - One `FeeResolver` / `CommissionResolver`: order fulfilment SCHEDULED reads the area's scheduled values and ignores shop `DeliveryConfig` (free-delivery-above does not apply unless configured); legacy and Eat Now orders keep today's path.
-> - Store the rate on the order at placement (`commission_rate` NULL = legacy, not computed); compute the amount at settlement from delivered net lines, never at placement.
+> - Store the rate on the order at placement (`commission_rate` NULL = legacy, not computed); compute the amount at settlement from delivered net lines, never at placement. *Superseded 2026-10-18 by P20/P21: each order line snapshots its slab commission at order time; no stored rate, no settlement-time computation.*
 > - Area default per mode now, a nullable per-shop override later, both behind the one resolver.
 > **Verdict (updated 2026-10-14):** `proceed with conditions` after the owner decided D10: manual payout, commission on delivered/completed orders only, base = item subtotal after restaurant-funded discounts. Build an append-only commission ledger (accrual at DELIVERED/COMPLETED, reversal entries for later refunds) and a settlement statement; the GST invoice is deferred. Open: who holds COD cash.
+> **Superseded 2026-10-18 by P20/P21:** commission is a flat-rupee slab per unit, snapshotted per order line at order time from the restaurant's named plan (plan §3.4); no rate, no settlement-time computation, no commission ledger. The discount basis ("after restaurant-funded discounts") is reopened (see Open, review 4).
 
 ## P12 — separate curated Schedule menu (D3) details
 
@@ -278,6 +279,7 @@ Scope: decisions in schedule-plan.md §3.4–3.6 made after review 2. Code facts
 > **Failure scenario:** the menu shows a price from the current rate, but the PENDING_PAYMENT order snapshots at checkout and confirm happens after a rate change at midnight: the customer pays the old price (fine) but a retry of checkout would show a new price.
 > **Mitigation:** snapshot at checkout creation (the price shown in the payment sheet); a new checkout re-prices. Document as intended.
 > **Verdict:** `proceed`.
+> **Superseded 2026-10-18 by review 4 (P19-P21):** the menu price is no longer derived from a rate; commission is computed on the order from a named slab plan.
 
 ## Open decisions: recommendations
 
@@ -286,7 +288,7 @@ Scope: decisions in schedule-plan.md §3.4–3.6 made after review 2. Code facts
 | D1 | One restaurant per order or several | **One per order**; the manager combines at batch level. Verify the cart already enforces a single shop *(not checked)* |
 | D2 | Cancellation | **Free before release** (cutoff), refund + capacity release. After release: no customer refund; a **restaurant decline after release always refunds** (existing decline path) |
 | D3 | Menu | **Short daily list** = `scheduled_menu_item` (P5) |
-| D4 | Restaurant cutoff | **Decided 2026-10-14: optional lead minutes** (`schedule_lead_minutes` INT NULL, CHECK 0..240, on the shop; no `schedule_enabled` flag, see P1 (i)); NULL = slot cutoff only; the customer sees a computed clock time per slot (P3a) |
+| D4 | Restaurant cutoff | **Decided 2026-10-14: optional lead minutes** (`schedule_lead_minutes` INT NULL, CHECK 0..240, on the shop; no `schedule_enabled` flag, see P1 (i)); NULL = slot cutoff only; the customer sees a computed clock time per slot (P3a). *Superseded 2026-10-15 by per-dish order-until (plan #15/#16).* |
 | D6 | Shop to area | **Decided 2026-10-14: assigned by admin**, `service_area_id` UUID NULL on the shop, no FK, one area per shop, conditions P1 (e)-(j) |
 | D8 | Audit approach | **Decided 2026-10-08: separate `platform_audit_events`** (admin + area ops; see [admin-access-redesign.md](admin-access-redesign.md)) |
 
@@ -298,3 +300,137 @@ Scope: decisions in schedule-plan.md §3.4–3.6 made after review 2. Code facts
 - `doConfirmPayment` stock-failure refund waits for the hourly sweep.
 - `AuditSchemaGuard` checks only table existence; a column added by manual SQL is not detected.
 - Delivery orders ignore shop opening hours entirely (only guest QR ordering checks them).
+
+## Review 4 (2026-10-18): pricing and commission model
+
+Scope: owner decisions of 2026-10-17/18 on how a Schedule dish is priced and how Ninjasu earns on it. Code fact
+behind the change: an item has no price of its own; the price is the sum of the selected add-on options, and one
+required ITEM group gives the base price ([02-Domain/menu.md](../02-Domain/menu.md)). Today the customer app and
+POS both read the same `Addon.price`, so the app shows the dine-in price with no commission.
+
+**Status of earlier items (2026-10-17).** P4 is built as 2b.1 (backend PR #53, merge `b1a9080`): `OrderStatus` is
+classified LIVE / SCHEDULED_ONLY / GHOST / TERMINAL (SERVED and COLLECTED are TERMINAL); shop board, shop detail,
+customer active order and KDS exclude SCHEDULED; customer history keeps it. `findActiveByShopId` did not exist, so
+staff `assignDelivery` needed a new guard to refuse SCHEDULED. The new-order push says COD only for cash on delivery
+(closes the "COD" finding above).
+
+## P18 — one split price per dish cannot express sizes or paid add-ons (problem found)
+
+> **Proposal (decision 21, P12):** a per-day `scheduled_menu_item.split_price` per dish; menu price = split + commission.
+> **Failure scenarios:**
+> - (a) A thali in Regular and Large, plus egg / kebab / papad, plus a choice of dal or sambar: one number per dish cannot price any of it. The price is built from options, not stored on the item.
+> - (b) Adding a split price per option per day re-types the whole option price list daily, and drifts from the live menu.
+> - (c) Forbidding paid add-ons on Schedule dishes (the earlier "v1: no paid add-ons, pending Samivan's OK") removes the dishes restaurants actually sell at lunch.
+> **Mitigation (decided 2026-10-18):**
+> - Paid add-ons ARE allowed on Schedule dishes; the "no paid add-ons" proposal is rejected.
+> - `scheduled_menu_item` keeps only stock and availability (`stock_qty`, `reserved_qty`, `order_until`, `active`, plus `copied_from_id` etc.) and has **no `split_price`**. Prices come from the add-on options (P19).
+> - The price-preview endpoint built on split price is dropped.
+> **Verdict:** `proceed`. P12's `schedule_price` and P15 (b)'s "split-price edit" now read as "online-price edit".
+
+## P19 — two prices per option; commission on the order, never in the menu
+
+> **Proposal:** each add-on option carries a **dine-in price** and an **online price**. Ninjasu POS, counter sale and the guest QR menu show dine-in; the customer app (Eat Now and Schedule) shows app. The restaurant sets the online price. Commission is computed on the order.
+> **Failure scenarios:**
+> - (a) A commission built into each option ("restaurant price + %") rounds per option and compounds across add-ons; the customer sees a derived number nobody chose.
+> - (b) A rate change recomputes every online price at once: thousands of menu prices move overnight without the restaurant touching them (P17's midnight case).
+> - (c) The restaurant cannot see in the app the price it set, so price complaints have no owner.
+> **Mitigation (decided 2026-10-18):**
+> - Commission is computed on the order, never shown in or built into a menu item. The app never displays "restaurant price + 10%".
+> - If Ninjasu changes its commission, online prices are updated by hand; nothing is recomputed automatically.
+> - The restaurant menu editor shows a read-only line next to each online price: "Ninjasu keeps RsX, you get RsY", computed from the restaurant's plan (P21).
+> **Verdict:** `proceed`.
+
+## P20 — commission is a flat-rupee slab per item unit
+
+> **Proposal:** commission per unit from a slab on the unit's online price including the add-ons chosen for that unit; × quantity; order commission = sum of lines; restaurant payout = item total at online prices − commission. Delivery and packaging fees excluded; GST on commission charged extra.
+> **Standard slab:**
+>
+> | Unit online price | Commission per unit |
+> |---|---|
+> | Rs0-99 | Rs5 |
+> | Rs100-149 | Rs10 |
+> | Rs150-199 | Rs15 |
+> | Rs200-249 | Rs20 |
+> | Rs250-299 | Rs25 |
+> | Rs300 and above | Rs25 + 10% of the amount above Rs300 (Rs400 → Rs35, Rs500 → Rs45) |
+>
+> Example: thali Large 200 + Egg 20 + Papad 10 = Rs230 → Rs20 per thali.
+> **Why a slab and not a percentage:** a rupee amount a restaurant owner can read off a table and check on a statement; whole rupees below Rs300; the 10% tail above Rs300 is not a whole rupee in general (Rs333 → Rs28.30), so it is rounded per unit by the shared #27 rounding function before multiplying by quantity (test a tail case such as Rs333); the 10% tail above Rs300 starts at Rs25, so there is no jump at the top band.
+> **Failure scenarios:**
+> - (a) Basis per line instead of per unit: two thalis at Rs230 fall in the Rs400+ band (Rs41) instead of 2 × Rs20. The slab must be applied to one unit, then multiplied.
+> - (b) Low-priced items: Rs5 on a Rs30 snack is about 17%. A bakery or snack shop on Standard pays a high effective rate.
+> - (c) Band edges: a restaurant prices at Rs149 instead of Rs150 to pay Rs10 instead of Rs15. Accepted: the step is Rs5 and the customer's price falls too.
+> - (d) A partial refund or a declined line recomputes commission from today's plan and returns a different amount.
+> **Mitigation:** one commission function, unit-based, used by checkout and the menu-editor preview line; settlement and refunds read the snapshotted per-line commission and never call the function. Each order line snapshots its commission so a partial refund returns exactly that line's commission (P21). Case (b) is what a named low-price plan is for (P21). Effective revenue is about 5-10% of item value; check it against rider cost per order with pilot numbers (open).
+> **Verdict:** `proceed with conditions`.
+
+## P21 — named, versioned commission plans created by admin
+
+> **Proposal:** Ninjasu platform admin creates and names slab plans (Standard; a low-price plan for snacks/bakeries or a partner/launch plan only when needed; a custom plan for one restaurant is allowed and is still a recorded named plan). Each restaurant is assigned one plan.
+> **Why named plans and not one slab per restaurant:** a bespoke slab per restaurant means as many rule sets as restaurants to explain, audit, attach to agreements and change with notice; nobody can say which restaurants are on which terms. Named plans keep the set small and comparable; the one-off case is still possible, but as a named plan.
+> **Failure scenarios:**
+> - (a) A plan edited in place changes the meaning of past orders and statements.
+> - (b) A plan change applied without notice breaks the agreement.
+> - (c) A restaurant with no assignment: a silent fallback to 0 or to Standard hides a missing setup (P11 (e): missing means "not configured", never 0).
+> **Mitigation (decided 2026-10-18):**
+> - Plans are versioned and append-only. A change is a new version and needs the existing notice period.
+> - Each order snapshots the plan id + version and the per-line commission; later plan changes never alter past orders.
+> - The assignment keeps the existing ideas from decision 22 / 2a.4: scope, `effective_from`, notice check, `consent_ref` (the signed agreement's reference).
+> - This supersedes the 2a.4 percentage model (`commission_rate.rate_percent` per shop/area, `CommissionRateResolver`, `rateAt`), which has no production caller yet.
+> - Onboarding agreement (handled outside the code): plan name + version with the slab table attached, notice period, online-price cap, refund handling, payout schedule, GST on commission. Legal/CA review of the text is needed.
+> **Verdict:** `proceed with conditions`. Case (c) still needs an explicit rule.
+
+## P22 — one global online-price cap, outside the commission math
+
+> **Proposal:** one platform setting "max online price over dine-in price" (%). A save that puts an online price above dine-in + cap% is refused with a clear message.
+> **Why global:** the cap is a customer promise ("the app is never much dearer than the restaurant"); a per-restaurant setting becomes a negotiation and the promise stops being one rule.
+> **Why outside the commission:** parity is NOT part of the commission math. Commission depends on the online price only; the cap is a validation on save. Mixing them (lower commission for parity) makes commission depend on two prices and rewards moving the dine-in price (P23).
+> **Failure scenarios:**
+> - (a) Ninjasu tightens the cap later: items already above it stay on sale at the old premium.
+> - (b) The cap is checked only in the form and not on the API.
+> **Mitigation:** the check lives in the server-side save path. When the setting is tightened, items already above it are flagged and hidden from Schedule until fixed.
+> **Verdict:** `proceed`. The percentage itself is open.
+
+## P23 — gaming risk for restaurants not on Ninjasu POS: dine-in edit gating
+
+> **Failure scenarios:**
+> - (a) The cap is relative to the dine-in price. A restaurant that does not bill dine-in on Ninjasu POS can raise its dine-in price in Ninjasu at no cost (no walk-in customer is ever billed at it), which raises the cap headroom, then raise its online price. The cap would hold only on paper.
+> - (b) (added 2026-10-18) `posEnabled` is an owner toggle (`Shop.java:101`; owner-only PATCH `/api/shops/{id}/pos-settings`, `ShopTableServiceImpl.setPosEnabled`). A restaurant can turn POS on, raise the dine-in price and turn POS off again, so a gate that reads the toggle alone holds only on paper.
+> **Mitigation (decided 2026-10-18):**
+> - **POS not enabled:** the restaurant CANNOT edit the dine-in price. Only Ninjasu admin can, set at onboarding from the printed menu.
+> - **POS enabled (withdrawn the same day, see Revised below):** the restaurant's owner/admin can change the dine-in price. It is the price walk-in customers are billed, so raising it also raises real dine-in prices; the cost keeps it honest.
+> - Every price change (dine-in and app) is audited.
+> - Side benefit: a reason for restaurants to adopt Ninjasu POS.
+> **Residual risk (not closed):** a POS-enabled restaurant could raise the POS price and bill walk-ins outside Ninjasu; the audit trail makes the change visible, nothing more. A non-POS restaurant whose printed menu changes must ask Ninjasu to update the dine-in price.
+> **Revised 2026-10-18 (Samivan; closes (b) and D23):** the POS gate is withdrawn. Only the Ninjasu admin edits the dine-in price, for every shop, POS or not; the restaurant edits only the online price. This closes (a) and (b) without needing any POS signal. Cost: POS restaurants ask Ninjasu for dine-in price changes, and the existing restaurant menu editor must write the online price, not the dine-in price.
+> **Verdict:** `proceed` (updated 2026-10-18).
+
+## P24 — Schedule-menu permissions
+
+> **Proposal (decided 2026-10-18):** `schedule_menu.view`, `schedule_menu.manage` (dishes, order-until, copy day), `schedule_menu.stock` (restock, mark sold out, move order-until only). Owner/admin all; Manager all; Chef view + stock.
+> **Failure scenario:** adding the new keys to the LEGACY permission sets breaks `legacyMyRole`, which matches a role by `containsAll` on LEGACY: existing members stop resolving to their legacy role.
+> **Mitigation:** add the keys to DEFAULT templates only, never to LEGACY.
+> **Verdict:** `proceed`. Delivered in 2b.2 (b) with the shop-side API under `/api/shops/{shopId}/schedule-menu`.
+
+## Alternatives rejected (review 4)
+
+- **Per-option markup, "restaurant price + %":** derived prices per option, rounding compounds across add-ons, every rate change rewrites the menu (P19).
+- **Parity tiers inside the commission** (lower commission when online price equals dine-in): couples two concerns and rewards inflating the dine-in price; the global cap (P22) and edit gating (P23) handle parity instead.
+- **Bespoke per-restaurant slabs:** unmanageable rule sets and agreements (P21); a one-off is a named plan.
+- **One split price per dish per day:** cannot express sizes or paid add-ons (P18).
+
+## Open (review 4)
+
+Suggestions in brackets are suggestions, not decisions.
+
+- The cap percentage [10%, roughly the median premium restaurants add on Swiggy/Zomato today].
+- Empty online price: fall back to the dine-in price [suggested, so Eat Now looks unchanged until a restaurant sets online prices], or require an online price before a dish is sold online.
+- Whether item/add-on discount percentages apply to both prices [suggested yes], and whether the slab uses the price after a restaurant-funded discount [suggested yes; a Ninjasu-funded coupon never changes commission].
+- Same commission plan for Schedule and Eat Now, or separate plans per fulfilment type.
+- Whether Eat Now orders also record commission and payout snapshots at order time [suggested yes, prices unchanged].
+- An add-on running out before the dish: reuse the live option's `isAvailable` flag (shared kitchen) [suggested for v1], or a per-day Schedule flag.
+- Which plans exist at launch [suggested: Standard only; add others when a real restaurant needs one].
+- A restaurant with no plan assigned (P21 (c)).
+- ~~How the POS on/off loophole of P23 (b) is closed~~ closed 2026-10-18: only the Ninjasu admin edits dine-in prices (P23, plan #48).
+- GST on commission, the aggregator-style model and the 9(5) question go to the CA (task 0.7) before 2b.3.
+- Ninjasu revenue per order (about 5-10% effective) must be checked against rider cost per order with pilot numbers.

@@ -25,6 +25,7 @@ instead of re-deriving it.
 
 | Doc | What it covers |
 |---|---|
+| [browser-test-todo-2b12c.md](browser-test-todo-2b12c.md) | Full manual browser test list for the 2b.12(c) add-on price editors and the admin Pricing page (cap, review queue); nothing run in a browser yet |
 | [admin-access-redesign.md](admin-access-redesign.md) | **Proposed** — platform staff access: `platform_staff` table (admin + area roles) instead of `users.roles`, separate staff login/token/console host, `platform_audit_events`; effort + build order. Lands before Schedule Phase 2 |
 | [schedule-design-review.md](schedule-design-review.md) | Schedule Phase 1 devil's-advocate review: P1–P8 verdicts, plan corrections, D1–D8 |
 | [schedule-plan.md](schedule-plan.md) | **Designing** — Schedule (planned lunch delivery) vs Eat Now as per-area modes; HSR pilot with manual batching; locked decisions, vocabulary, kill criterion, blockers, phases 0–8 |
