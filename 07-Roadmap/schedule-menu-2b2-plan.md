@@ -144,6 +144,15 @@ An admin area-window edit returns a non-blocking `affectedDishes` warning listin
 - **`AuditModule`:** `FLOOR, TAKEAWAY, BILLING, SETTINGS, MENU`; `SCHEDULE` is added in PR (b).
 - **Permissions by DEFAULT template:** Owner/admin has everything; Manager has `menu.view` and `menu.manage`; Staff has `menu.view` only; Chef has only KDS permissions; Cashier and Accountant have no menu permission.
 
+### Decided while building PR (c) (branch `feature/schedule-2b2c`)
+- O-1 answered yes by Samivan (2026-10-23): a restaurant whose dishes are all past their order-by time stays listed, greyed.
+- The restaurant screen and the customer menu read through one multi-shop `ScheduleFactsLoader` (eight queries however many restaurants); the PR (b) assembler was moved onto it.
+- "Starts at" uses `StartsAtPriceQueries.minPricesByItem` with a new list of options to leave out, so a Schedule-off option cannot set the price; the live toggle is still not read. The same query's delivery-channel rule means a dish with no price row is not sold on delivery, so it is hidden from customers (the restaurant screen does not flag this yet).
+- A date other than today in the area's zone is a 400 on the context endpoint (the old "advance days" behaviour for tomorrow is gone). An Eat Now-only area still answers with its slots.
+- `nextOrderableAtMs` is the window opening of the first following day that the restaurant is not closed and the area is not paused, looked up within the 60-day closure window; absent for a "Today only" dish.
+- A restaurant with no dish to show (every dish off, hidden or unpriced) is not listed. SOLD_OUT cannot occur until the 2b.6 ledger exists (sold counts are 0).
+- No cache: the public route does about a dozen indexed reads per call. A short per-area cache would show a dish for a few seconds after its order-by time, so it is a separate decision; checkout must re-check the time either way.
+
 ### Decided while building PR (b) (branch `feature/schedule-2b2b`)
 - The GET names the restaurant-level reason as `restaurantReason` (AREA_CLOSED, NOT_OPEN_YET, NOT_ASSIGNED, RESTAURANT_CLOSED) instead of the spec's three banner names; the app maps them to text.
 - Writes answer with the dish's settings (or `{updated}`, `{addonId, offForSchedule}`, `{closedOn, paidOrdersCount}`), not a recomputed dish; the app refetches the GET for reasons.
