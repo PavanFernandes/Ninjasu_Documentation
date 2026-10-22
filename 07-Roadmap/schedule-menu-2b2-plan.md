@@ -144,6 +144,18 @@ An admin area-window edit returns a non-blocking `affectedDishes` warning listin
 - **`AuditModule`:** `FLOOR, TAKEAWAY, BILLING, SETTINGS, MENU`; `SCHEDULE` is added in PR (b).
 - **Permissions by DEFAULT template:** Owner/admin has everything; Manager has `menu.view` and `menu.manage`; Staff has `menu.view` only; Chef has only KDS permissions; Cashier and Accountant have no menu permission.
 
+### Decided while building PR (b) (branch `feature/schedule-2b2b`)
+- The GET names the restaurant-level reason as `restaurantReason` (AREA_CLOSED, NOT_OPEN_YET, NOT_ASSIGNED, RESTAURANT_CLOSED) instead of the spec's three banner names; the app maps them to text.
+- Writes answer with the dish's settings (or `{updated}`, `{addonId, offForSchedule}`, `{closedOn, paidOrdersCount}`), not a recomputed dish; the app refetches the GET for reasons.
+- One exception type, `ScheduleMenuException(status, code, message)`, carries every code of the API table; the response is `data: {code: message}`. Added codes: `BULK_EMPTY`, `BULK_ENABLED_REQUIRED`, `TODAY_ONLY_NEEDS_ENABLED` (Today only on a dish that ends up off), `CONCURRENT_UPDATE` (409, retry: a duplicate key on insert poisons the transaction, so it is not swallowed).
+- `PATCH` tells `"orderUntil": null` from an absent field with a presence flag on the request class.
+- The usual order-by time is validated like a dish's own (after the opening of ordering, as instants); both need an area. Switching an option and reopening a date need no area. A closure needs one (it is dated in the area's zone) and today..+60 days, so a restaurant has at most 61 future closures.
+- Ownership: the item must be a live dish of the shop in the path; an option's group must belong to it; settings rows are read and deleted only through the `...AndShopId` methods. A platform admin passes the permission check, so the shop's existence is checked by loading it.
+- The bulk audit event lists only the dishes that changed, with their shared earlier state in `from` (null when they differed) and `todayOnly` in the metadata.
+- Switching an option back on checks the option belongs to the restaurant unless a Schedule-off row of this restaurant was deleted by the call (that row proves ownership, so an option deleted since can still be switched on).
+- The booked count (`bookedToday`) and the paid-order count of a closure arrive with 2b.6; the count is 0 until then.
+- Permissions follow O-2 as recommended (`menu.view` / `menu.manage`), still to be confirmed by Samivan; SecurityConfig gates the prefix to SHOP or ADMIN.
+
 ### Decided while building PR (a)
 - Named CHECK constraints use the `chk_` prefix like every existing constraint (this spec said `ck_`). The three single-column tables declare an inline `PRIMARY KEY` like every sibling migration (Hibernate's own key on the same column is equivalent), so the spec's `pk_<table>` names exist only for `shop_closure`, whose key `pk_shop_closure (shop_id, closed_on)` replaces the `(closed_on, shop_id)` key Hibernate creates when it runs first. The guard has 9 entries for this file (4 tables, `pk_shop_closure`, 2 CHECKs, 2 indexes).
 - **Judge fixes, 2026-10-22 (deep run, report in the session):**
