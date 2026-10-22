@@ -53,6 +53,14 @@ Invalid: Main Course → items directly AND also has sub-categories
 - An item cannot be assigned to a parent category that has sub-categories — must go to the leaf.
 - No `price` column on `items`. Price always comes from addon groups.
 
+### Live stock (Eat Now + dine-in share it)
+
+- `is_available` is one manual toggle for every live channel: Eat Now cart, captain POS and guest QR (`PosOrderServiceImpl.java:223` checks it for both POS and GUEST sources). It never resets by itself.
+- `items.stock_mode`: `UNTRACKED` (default, no count, only the toggle) · `DAILY` (`items.stock_qty` portions per day; `ItemStockResetJob` at 03:00 IST closes yesterday and opens today, so a sold-out DAILY item is back next morning) · `ONE_TIME` (one batch; stays sold out until reopened).
+- Counts live in `item_stock_ledger`, one row per stock period, at most one open per item; remaining = planned + restocked − sold (derived). Eat Now (`OrderAssembler.java:191,221`) and POS (`PosOrderServiceImpl.java:148`, at fire) both decrement the same open row; cancel/void credits back to the exact row. `turned_away_count` records demand after sell-out.
+- Changing `stock_qty` on a DAILY item affects the next reset only; "add stock" (`restocked_qty`) raises today's period.
+- Schedule never touches this ledger (schedule-plan #15).
+
 ### Addon Group Rules
 
 #### Group scope (explicit, set at creation time)
