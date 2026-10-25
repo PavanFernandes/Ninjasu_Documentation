@@ -312,7 +312,7 @@ coupons, taxes, surge, distance-based delivery) is computed at order placement.
 | `subtotal`             | decimal   | Sum of snapshot selling prices for selected items × qty  |
 | `totalSavings`         | decimal   | Sum of `(mrp - sellingPrice) × qty` for selected items   |
 | `deliveryFee`          | decimal?  | Shop-level base fee from `delivery_config`; null if none |
-| `platformFee`          | decimal   | Platform-wide constant (`app.cart.platform-fee`)         |
+| `platformFee`          | decimal   | Always 0 today (no platform fee is charged); a future fee comes from the service area |
 | `freeDeliveryAbove`    | decimal?  | Threshold from `delivery_config`; null if not configured |
 | `amountToFreeDelivery` | decimal?  | `max(0, freeDeliveryAbove - subtotal)`; null if no threshold |
 | `lastUpdatedAt`        | ISO 8601  | Most recent session/item update — drives cache staleness |

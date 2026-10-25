@@ -8,7 +8,7 @@ apps: [backend, web, customer, rider]
 module: "schedule"
 anchors: []
 verified_against: "schedule-plan.md items #1-#41, design review P1-P17 (2026-10-15)"
-updated: 2026-10-18
+updated: 2026-10-24
 review: schedule-design-review.md
 ---
 
@@ -75,7 +75,26 @@ Companion to [schedule-implementation-order.md](schedule-implementation-order.md
 | T2b-13 | **(invariant)** Group payment: verify-first, webhook-first, duplicate and concurrent confirms produce one confirmation; each member reserved once; **no live stock ledger write and no `OrderPlacedEvent`** | I | P14, C15 |
 | T2b-14 | Capture after cutoff: full refund. One dish sold out between checkout and payment: partial refund, the rest proceeds. Every dish fails: full refund including the delivery fee | I | #34 |
 | T2b-15 | Reconciliation: a pending group with a captured payment is confirmed; with a failed payment is cancelled | I | C15 |
-| T2b-16 | Customer cancels the group before the earliest locked cutoff: one full refund, reservations voided, capacity and stock restored; after the cutoff the cancel is rejected | I | #35, D2 |
+| T2b-16 | Customer cancels the group before `cancel_until_at`: one full refund, reservations voided, capacity and stock restored; after the deadline the cancel is rejected | I | #35, D2 |
+| T2b-16a | Area `cancel_freeze_minutes` empty (cancel disabled): the paid group has `cancel_until_at` NULL and the cancel is rejected | I | geld TIME-3 |
+| T2b-16b | The area's `cancel_lead_minutes` changes after payment: the paid group's deadline does not move | I | geld TIME-3 |
+| T2b-16c | Cancel after some orders were released (PLACED): all remaining orders cancelled, one refund, the restaurant is notified and its ticket amended | I | geld invariant 10 |
+| T2b-16d | Any order ACCEPTED or later: whole-group customer cancel refused, no refund, nothing changes; a DELIVERED order refuses it too | I | geld invariant 10 |
+| T2b-16e | One order already declined: cancel proceeds for the rest and the refund excludes the declined order's amount once | I | geld invariant 10 |
+| T2b-16f | Release job and cancel race on the same group: never a half-cancelled group | I | geld L-12 |
+| T2b-16g | Restaurant or Ninjasu admin accepts an order while the customer's group cancel commits: exactly one wins; a CANCELLED order is never overwritten with ACCEPTED | I | geld STATE-1 |
+| T2b-16h | A cancel refused because an order is ACCEPTED tells the customer why; an audit row holds actor, old and new status, time | I | geld STATE-1 |
+| T2b-16i | Cancel after `cancel_until_at` is refused even though every order is still SCHEDULED or PLACED; a payment confirmed inside the freeze window stores a deadline already past | I | geld TIME-3 |
+| T2b-16j | Late cancel: an order not delivered by slot start + grace can be cancelled by the customer and is refunded; before the grace it cannot (after the freeze) | I | geld TIME-3 |
+| T2b-16k | Late cancel when some orders were delivered: only the undelivered orders are cancelled and refunded | I | geld TIME-3 |
+| T2b-16l | The area's late-cancel grace changes after payment: the paid group's `late_cancel_from_at` does not move; an area without a grace gives no late cancel | I | geld TIME-3 |
+| T2b-16m | A Ninjasu admin accepts a SCHEDULED order: refused; accepts a PLACED order: allowed, audited, and customer cancel is frozen | I | geld STATE-1 |
+| T2b-16n | Payment confirmed after `cancel_until_at`: the stored deadline is already past, ordinary cancel is refused, late cancel still works | I | geld invariant 10 |
+| T2b-16o | The rider completes a delivery (OTP, then DELIVERED) after the order was cancelled: refused; the order stays CANCELLED | I | geld invariant 12 |
+| T2b-16p | Late cancel and the rider's OTP entry at the same moment: exactly one wins; if the cancel commits first the typed OTP is rejected and the order is never DELIVERED | I | geld invariant 11 |
+| T2b-16q | The delivery-to-order projection never overwrites CANCELLED or DECLINED with OUT_FOR_DELIVERY or DELIVERED | I | geld invariant 12 |
+| T2b-16r | A cancelled order cannot be assigned, accepted, picked up or marked out for delivery by staff or rider | I | geld invariant 12 |
+| T2b-16s | A late cancel of an order with a live delivery cancels the delivery in the same transaction; the rider receives "Customer cancelled: do not deliver"; a failed push is retried; the rider app closes the job | I/E | geld L-17 |
 | T2b-17 | **(invariant)** A restaurant decline and an ops cancel at the same time never refund more than captured; the delivery fee is refunded once | I | P14 |
 | T2b-18 | Release job: orders with `release_at` at or before now become PLACED once; two job instances race safely; catches up after a restart; a voided order is ignored; the reservation is kept | I | 2b.11, C2 |
 | T2b-19 | The hourly reconciliation and refund jobs do not touch a paid SCHEDULED order that is hours from its release | I | C13 |
@@ -99,6 +118,32 @@ Companion to [schedule-implementation-order.md](schedule-implementation-order.md
 | T2b-37 | (2b.12) A shop caller (owner, manager) cannot write a dine-in price through ANY existing path: add-on group create/update, inline option creation on item create/update, shared group options; each path writes only the online price | I | Codex review 2026-10-18 |
 | T2b-38 | (2b.12) The Ninjasu admin lowers a dine-in price so an unchanged online price is now above the cap: the option is flagged and hidden from Schedule | I | Codex review 2026-10-18 |
 | T2b-39 | (2b.12) The same dish shows the same online price on home, search, wishlist, shop menu, cart and checkout; the POS and guest QR show the dine-in price | I | Codex review 2026-10-18 |
+
+### 2b.3 Pricing (added 2026-10-24; slices a and c built, b and the wiring open)
+Backend branches `feature/schedule-2b3` (merged, PR #62) and `feature/schedule-2b3c` (PR #63). Status: **Done** = executable test exists and passes; **Open** = still to write.
+
+| ID | Case | Lvl | Status |
+|---|---|---|---|
+| T2b3-01 | One whole-rupee rule: half up at .49 / .50 / .51, round-off line shows the difference, total never carries paise; dine-in and POS bills unchanged | U | Done: `RoundingPolicyTest`, `BillTotalsCalculatorTest` |
+| T2b3-02 | Schedule customer pays 5% on top whatever the shop's GST regime (REGULAR, COMPOSITION, UNREGISTERED); the rate follows the line's tax-class snapshot; an inclusive-priced line throws instead of going untaxed; dine-in keeps the regime gate | U | Done: `GstTaxEngineTest`, `BillTotalsCalculatorScheduleTest` |
+| T2b3-03 | Tax is on the price after discount; delivery and packaging are outside the tax base; fractional area fees (Rs0.50 + Rs0.30) still give a whole-rupee payable | U | Done: `BillTotalsCalculatorScheduleTest` |
+| T2b3-04 | Eat Now fee unchanged by the move (base + per-km half up, blank fees as 0, free at and not one paisa below the threshold); Schedule reads the area fees and never `DeliveryConfig`; no area is an error | U | Done: `FeeResolverTest`, `OrderAssembler*Test` |
+| T2b3-05 | Payout = price after discount - commission - 18% GST on commission, exact to paise (Rs160, Rs15 -> Rs142.30); a negative payout is returned, not floored | U | Done: `PayoutCalculatorTest` |
+| T2b3-06 | Price quote forward and reverse: slab jump dead zone (Rs149 pays more than Rs150), wanted payout needs the lowest whole rupee (Rs150 -> Rs168), large flat commission reachable (Rs150 behind a Rs10,000 slab -> Rs11,950), more than 2 decimals rejected, unreachable payout rejected | U | Done: `PriceQuoteCalculatorTest` |
+| T2b3-07 | Quote access: `menu.view` checked before any card is read, platform admin allowed; exactly one of price / wanted payout | U | Done: `PriceQuoteServiceImplTest` |
+| T2b3-08 | Quote cap figure equals the save rule to the paisa (Rs140.50 at 10% -> Rs154.55); omitted when no dine-in price | U | Done: `PriceQuoteServiceImplTest` |
+| T2b3-09 | A scheduled commission change is reported as `pendingChange` (date, card, version) while the quote stays on the card in force now; none waiting -> null | U | Done: `PriceQuoteServiceImplTest`, `CommissionCardResolverImplTest` |
+| T2b3-10 | Quote route on the real security stack: customer JWT -> 403, another shop's owner -> 403, no token -> 401, member with `menu.view` -> 200 | C | Open (only the matcher text and the service check are tested) |
+| T2b3-11 | `findActiveStartingAfter` against a scratch Postgres: a cancelled future row is not pending; the soonest of two future rows wins; a started row is not pending | I | Open |
+| T2b3-12 | Unreachable wanted payout returns 400 within an agreed time (the scan runs to Rs1,000,000, about a second); decide a rate limit or a per-slab solve before the editor calls it per keystroke | I | Open (decision) |
+| T2b3-13 | Eat Now checkout response: `deliveryFee` for no-config and free-delivery is now `0.00` (was `0`); numeric value unchanged on web and mobile | C | Open |
+| T2b3-14 | Cart preview delivery fee (`CartServiceImpl`, base fee only) equals the fee the order is created with when a per-km fee is set (existing drift) | I | Open (suspected bug) |
+| T2b3-15 | Editor banner: shows the change date and new card when `pendingChange` is present; absent otherwise; the date renders in the shop's time zone | E | Open (web) |
+| T2b3-16 | Slice (b) round-off toggle: default on (null = on); off keeps paise and round-off 0.00 on forOrders and the live check preview; Schedule path always whole-rupee; owner or admin only (non-owner, other shop's owner, customer, rider refused); audited once with before and after, none when unchanged; not settable through the general shop update; guard requires the column | U/C | Done in backend (PR for `feature/schedule-2b3b`): `RoundingPolicyTest`, `BillTotalsCalculatorRoundOffTest`, `CheckAmountsResolverTest`, `RoundOffSettingServiceImplTest`, `ShopRoundOffControllerTest`, `ShopRoundOffRouteSecurityTest`, `ShopServiceImplTest`. Open: the confirm-on-switch-off dialog (web), and a real-database run of the SQL on a scratch database |
+| T2b3-19 | Four web screens (`CheckPanel`, `CheckHistory`, `OrderTicket`, `OrderHistoryTable`) show two decimals when an amount has paise; whole rupees unchanged | E | Open (web) |
+| T2b3-20 | Two simultaneous round-off PATCHes: at most one audit entry per real change (today two identical lines are possible; accepted, same as the POS switch) | I | Open (low) |
+| T2b3-17 | Wiring (2b.8): Schedule checkout uses `forScheduleLines` and `FeeResolver`; the order stores tax, commission and payout snapshots (2b.4); Eat Now unchanged until the Eat Now GST answer | I | Open |
+| T2b3-18 | CA check: 18% GST on commission borne by the restaurant (exclusive or inclusive), 5% on top under 9(5) | M | Open (CA confirmation) |
 
 ## Phase 2c — Settlement inputs
 | ID | Case | Lvl | Traces |
@@ -140,7 +185,7 @@ Companion to [schedule-implementation-order.md](schedule-implementation-order.md
 | T4-03 | A dish reappears after a restock on the next refresh; a sold-out dish is greyed | E | #15 |
 | T4-04 | Two-restaurant cart, one payment, itemized lines; `PRICE_CHANGED` shows a confirmation dialog | E | #30 |
 | T4-05 | Cutoff passes while the payment sheet is open: the customer is told and refunded | E | #34 |
-| T4-06 | Upcoming card shows both order codes; whole-group cancel works before the cutoff and is hidden after | E | #35 |
+| T4-06 | Upcoming card shows both order codes; whole-group cancel works before `cancel_until_at` and is hidden after it, and hidden when the area disables cancel | E | #35 |
 | T4-07 | A scheduled order never replaces the active Eat Now order | E | P4 |
 
 ## Phase 5 — Restaurant side
