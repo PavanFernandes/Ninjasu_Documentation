@@ -75,7 +75,13 @@ Owner: **S** = Samivan, **C** = Claude. What IS verified in code: the backend su
 ## G. Platform fee
 - [ ] **C** `GET /api/cart` returns `platformFee` 0 and the setting `app.cart.platform-fee` is gone from `application.properties`; an order never had a platform fee.
 
-## H. Still to build (not testable yet)
+## H2. Device checks (built 2026-10-25, type-checked only, NOT seen on a device)
+- [ ] **C** Eat Now FOOD cart on a real phone: cart bill shows CGST/SGST rows (or "Taxes"), no Platform Fee row, grand total and the checkout button total match, and the "rounded to the nearest rupee" note appears.
+- [ ] **C** Place an order: the Razorpay amount equals the cart total rounded to the whole rupee; order summary shows Taxes and a signed Round off row, and Total equals what was paid.
+- [ ] **C** GROCERY/PRODUCT cart and an old pre-2b.4a order: no tax or round-off rows, totals unchanged.
+- [ ] **W** Shop board ticket shows the item subtotal (not the customer total); order history column reads "Items total".
+
+## H. Still to build (not testable yet; the customer app and web rows below are BUILT, see H2)
 - [ ] **C** Customer app (`Food-Ninja-Frontend`): cart bill shows the tax row from `taxTotal`/`taxLines`, hides the platform-fee row when 0, stops adding the platform fee itself (`BillDetails.tsx:23`, `CartScreen.tsx:145` compute the total locally today), and shows the final payable and round-off from the checkout response; order summary shows tax and round-off.
 - [ ] **C** Ninjasu_Web shop and KDS order views show the item subtotal, not the customer's total; the order ticket and board do not show tax.
 - [ ] **C** Ninjasu_Rider_App needs no change for 2b.4a (cash expected still comes from the order total).
