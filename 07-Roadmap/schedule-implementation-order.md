@@ -111,6 +111,8 @@ The rows above are the plan; this is what shipped. Where they disagree, **this l
 
 ## Phase 2b — Pricing, carts, order groups, group payment, reservations
 
+**2b.8 to 2b.10 are reviewed as one design in [schedule-2b8-2b10-plan.md](schedule-2b8-2b10-plan.md) (geld deep, 2026-10-30); where it differs from the rows below, it wins.**
+
 Order inside 2b is strict: pricing and the checkout contract exist before any Razorpay order is created for Schedule.
 
 **Flexibility rule (plan decision 43).** Nothing in 2b hard-codes "Schedule" or "one shop". A `FulfilmentPolicy` per fulfilment type owns the differences (max shops per cart, payment owner kind, location policy, cancellation rule, reservation and release rules); the order group, payment owner, refund core and cart keying are generic over `fulfilment_type`. Multi-restaurant is on only for Schedule today; turning it on for another type later is a new policy plus UI, not a schema or payment-core change.
