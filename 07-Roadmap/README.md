@@ -25,6 +25,8 @@ instead of re-deriving it.
 
 | Doc | What it covers |
 |---|---|
+| [refund-approval-plan.md](refund-approval-plan.md) | **Built (backend merged 2026-10-29)** — admin-approved Razorpay refunds: design, data model review, locked decisions L-1 to L-12, build status and TODO (web board, app copy still open) |
+| [manual-test-todo-refunds.md](manual-test-todo-refunds.md) | Manual test list for admin-approved refunds: real-database constraints and row lock, Razorpay test mode (duplicate receipt, partial, failed, webhooks), admin API, the four trigger flows, customer view, legacy backfill, 409 idempotency; nothing run yet |
 | [browser-test-todo-2b12c.md](browser-test-todo-2b12c.md) | Full manual browser test list for the 2b.12(c) add-on price editors and the admin Pricing page (cap, review queue); nothing run in a browser yet |
 | [admin-access-redesign.md](admin-access-redesign.md) | **Proposed** — platform staff access: `platform_staff` table (admin + area roles) instead of `users.roles`, separate staff login/token/console host, `platform_audit_events`; effort + build order. Lands before Schedule Phase 2 |
 | [schedule-design-review.md](schedule-design-review.md) | Schedule Phase 1 devil's-advocate review: P1–P8 verdicts, plan corrections, D1–D8 |
