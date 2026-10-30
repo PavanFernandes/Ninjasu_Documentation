@@ -143,3 +143,25 @@ sequenceDiagram
 
 ### Isolation, tenancy, API
 Payments module owns group payment and refunds; Schedule module owns reservations and carts; order status writes go through the member lock. The checkout request carries an idempotency key per customer, a request hash and a typed `PRICE_CHANGED`; money is amount plus currency; the webhook is signature-checked and audited.
+
+## Build status (2026-10-30)
+
+**BUILT and committed locally** on backend branch `feature/schedule-2b7-group-refund-raise` (commits `4f7ef92`, `64b2311` and the legacy-guard commit after it). Not pushed. Full suite green (about 1870 tests). Nothing has run against real Razorpay or a real database. Specs the implementer followed: [specs/](specs/).
+
+| Phase | What exists |
+|---|---|
+| Foundations | group status writers (`markPaidWithCapture`, `markCancelled`, `markCaptureMismatch`, `recordOrphanCapture`), `CancelWindowResolver`, `GroupCaptureValidator`, `GroupKeys`, `GroupPaymentGateway` (Razorpay), the refund core accepting FAILED, CANCELLED and CAPTURE_MISMATCH groups with the actual captured amount |
+| 2b.8 checkout | `POST /api/schedule/checkout`: area gate, ROUTE_SPLIT refusal, server re-pricing, group round-off, holds in the same transaction, frozen line tax weighted by each line own rate, idempotent replay, compensation only for the request that fails the group, typed PRICE_CHANGED and LINE_UNAVAILABLE |
+| 2b.9 group payment | verify (stored order id), webhook dispatch (one branch in `PaymentServiceImpl.processWebhook`), capture validation, confirm or void with all-or-nothing refund, orphan and mismatch refunds, extra-capture refund, `cancelCheckout`, hourly stale-group sweep |
+| 2b.10 cancel | whole-group cancel before `cancel_until_at`, member decline with `voidMember` restock, accept (admin accept audited), late cancel behind `schedule.late-cancel.enabled=false`, seller route delegation, DELIVERED writers refuse cancelled orders, legacy cancel and history refuse or skip group members |
+
+**Reviews:** three blind Codex reviews of `4f7ef92` found nine real defects (gateway replay race, cart reopen, mixed-tax split, silent foreign line ids, refund of a different captured amount, verify message, late cancel on a delivered order, active-order query, stale seller guard) and I added a tenth (legacy `cancelCheckout` on a group member). All fixed with tests; each fix was mutation-checked.
+
+**Not done, by design or by risk (read before enabling anything):**
+1. Razorpay test-mode rehearsal of every payment race; duplicate-capture behaviour is unverified.
+2. SQL not run: `payment-refunds-lines-migration.sql` (slice 4) and slice 3 Block 5; the new backend does not boot until the slice 4 file is applied (guard).
+3. Late cancel stays OFF: rider recall notice has no listener, the rider app change is a teammate task, and the concurrency test against a real database is missing.
+4. `release_at` is assumed to be the slot last-call instant (2b.11 release job is not built and stays off until 2d).
+5. `schedule_enabled` stays off in production until the pilot.
+6. Codex reported nothing on some attack points (member totals versus payable versus Razorpay paise, hold error mapping, ROUTE_SPLIT and the Eat Now edits in `OrderAssembler` and `BillTotalsCalculator`): treat them as unreviewed and cover them in `/judge deep`.
+7. One Codex job for the group payment build stalled on a network reconnect; its files were complete when I checked, and the suite and mutation checks cover them.
