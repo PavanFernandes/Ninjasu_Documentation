@@ -8,7 +8,7 @@ apps: [backend]
 module: "schedule"
 anchors:
   - { repo: backend, path: "src/main/java/com/example/ninja/service/schedule/shop/ScheduleMember.java" }
-verified_against: "backend feature/schedule-shop-visible; queries not yet run"
+verified_against: "backend feature/schedule; both queries run read-only on 2026-11-02, 0 rows each"
 updated: 2026-11-01
 ---
 
@@ -35,6 +35,9 @@ FROM orders
 WHERE cart_type = 'SCHEDULE'
   AND group_id IS NULL;
 ```
+
+## Result (2026-11-02)
+Both queries returned 0 rows through the read-only database tool. The table held 94 orders, 0 with a `group_id` and 0 with `cart_type = 'SCHEDULE'`, so the check proves consistency, not behaviour at volume. Run both again after the first Schedule orders exist and before `schedule_enabled` is turned ON for a second shop.
 
 ## If a row appears
 Stop and report it. Fix the data or move to a stronger discriminator before deploying; do not edit the predicate to fit the data.
