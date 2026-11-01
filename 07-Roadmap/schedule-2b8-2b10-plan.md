@@ -165,3 +165,75 @@ Payments module owns group payment and refunds; Schedule module owns reservation
 5. `schedule_enabled` stays off in production until the pilot.
 6. Codex reported nothing on some attack points (member totals versus payable versus Razorpay paise, hold error mapping, ROUTE_SPLIT and the Eat Now edits in `OrderAssembler` and `BillTotalsCalculator`): treat them as unreviewed and cover them in `/judge deep`.
 7. One Codex job for the group payment build stalled on a network reconnect; its files were complete when I checked, and the suite and mutation checks cover them.
+
+## Decision 2026-10-30: shop sees SCHEDULED orders at payment; no release job (same-day only)
+
+Decided by Samivan. Supersedes "SCHEDULED is hidden until the release job moves it to PLACED" for same-day Schedule.
+
+- Paid Schedule order stays `SCHEDULED` and never becomes `PLACED`. This keeps every Eat Now reader, the alarm listener, POS and the kitchen display untouched.
+- The shop sees it in its own Schedule tab, grouped by `order_groups.service_date` and slot; the tab count is the only signal. No push, no alarm, no `OrderPlacedEvent` for Schedule (notifications come with 2d).
+- Flow: `SCHEDULED` -> `ACCEPTED` (or `DECLINED`, existing refund and restock) -> `READY` (`PREPARING` skipped; the packer is not always the chef) -> `OUT_FOR_DELIVERY` -> `DELIVERED`. New transitions: `SCHEDULED->ACCEPTED/DECLINED`, and `ACCEPTED->READY` for Schedule orders only.
+- POS and kitchen display are off for Schedule orders; handled only from the Schedule tab. Verify at build that no KDS or POS read can return a `SCHEDULED` order.
+- Rider dispatch refuses `cart_type = SCHEDULE` until phase 6.
+- 2b.11 release job and `release_at` firing are PARKED until tomorrow-ordering exists; `release_at` stays as slot data.
+- Slot and date live on the order group, so shop reads join order to group.
+
+## Review 2026-10-30: shop-visible SCHEDULED flow (geld + devil's advocate + blind Codex)
+
+Status: FINAL 2026-10-30 (APPROVED WITH CHANGES, all accepted by Samivan). Codex claims were each re-read in code (cited lines checked). Run: geld default lenses, devil's advocate, blind Codex; no database was touched.
+
+### Plan versus built
+| Piece | Built today | Needed |
+|---|---|---|
+| Shop accept of SCHEDULED | no: `ScheduleCancelServiceImpl.acceptMember` requires PLACED | allow SCHEDULED |
+| Shop decline of SCHEDULED | admin only (`declineMember`) | allow shop with `ONLINE_ORDERS_MANAGE` |
+| ACCEPTED to READY for a group member | no: member path routes only accept, decline, cancel; table has ACCEPTED to PREPARING only | Schedule-only transition |
+| Dispatch refusal | manual assign refuses `SCHEDULED_ONLY` status only; rider accept and `DeliveryDispatchListener` check no cart type | refuse every Schedule member at every entry |
+| Shop board | hides SCHEDULED by status; an ACCEPTED member shows on the Eat Now board | exclude Schedule members from it; own tab and detail read |
+| KDS, POS | restricted to dine-in, takeaway and staff sources; no leak found | keep; add a test |
+| Group payment settle | sets SCHEDULED, publishes no `OrderPlacedEvent` | keep |
+| Commission and invoice facts | frozen at checkout, not at accept | keep |
+
+### Findings (cost to change now: cheap, all in code, nothing applied)
+| ID | Rank | Finding and failure | Change |
+|---|---|---|---|
+| STATE-1 | must change | Shop cannot accept or decline a paid Schedule order. A paid order sits SCHEDULED with no shop action. | `acceptMember` and `declineMember` accept SCHEDULED for the shop. |
+| STATE-2 | must change | An accepted member cannot reach READY. | One transition table keyed by (cart type, status); Schedule row `ACCEPTED to READY`; member path routes it. |
+| ISO-1 | must change | Dispatch protection ends at acceptance: staff can assign an ACCEPTED Schedule order to a rider; rider accept passes at READY. | One predicate `isScheduleMember(order)` used by manual assign, rider accept and the dispatch listener. |
+| ISO-2 | must change | The new READY status event would make `DeliveryDispatchListener` broadcast rider offers for a Schedule order. | The listener ignores Schedule members until phase 6. |
+| ACCESS-1 | must change | An ACCEPTED or READY Schedule order appears on the Eat Now delivery board; the detail endpoint cannot open a SCHEDULED order. | Eat Now board excludes Schedule members; Schedule tab gets its own list, count and detail read. |
+| STATE-3 | trade-off | One shop declining blocks whole-group cancel of the other shops: `cancelGroup` refuses if any member is outside SCHEDULED or PLACED. Customer cannot cancel shop B before `cancel_until_at`. | Treat DECLINED members as already settled; refuse only if a member is ACCEPTED or later. |
+| TIME-1 | revisit at 2d | No accept deadline: a paid SCHEDULED order nobody accepts stays until the slot passes. | Stopgap for the pilot, ops alert at 2d. |
+| EVOL-1 | revisit at tomorrow-ordering | The decision holds only for same-day. Checkout must refuse `service_date` other than today, so tomorrow orders cannot arrive visible. | Verify or add that guard now; reopen this decision before any tomorrow ordering. |
+| PERF-1 | revisit at pilot | The tab and badge query has no index evidence: `orders` has `(shop_id, order_type, status)`, the group index is group-first. | `EXPLAIN ANALYZE` on a branch with sample data before adding an index. |
+| API-1 | trade-off | A badge without a notification must refetch. Polling must not keep the scale-to-zero database awake. | Refetch on window focus plus a slow interval while the tab page is open. |
+| KEEP | keep | Status `SCHEDULED` as the holding status; commission and invoice frozen at checkout; accepted-A declined-B voids B stock and keeps the group; KDS and POS exclusion. | none |
+
+### Devil's advocate trace
+- Skipping PREPARING makes a second state machine: absorbed (STATE-2, one table keyed by cart type).
+- SCHEDULED now means both "paid and waiting" and "shop-visible": accepted; the `SCHEDULED_ONLY` group comment and `SHOP_HIDDEN_STATUSES` wording change, the Eat Now reads keep excluding it.
+- Tomorrow ordering later reopens hiding: absorbed (EVOL-1).
+- Nobody accepts: absorbed (TIME-1).
+- Readers that include ACCEPTED or READY by status: absorbed (ACCESS-1, ISO-1, ISO-2).
+- Parked `release_at`: rejected as a risk; it is data only.
+
+### Locked decisions (Samivan, 2026-10-30)
+| ID | Decision |
+|---|---|
+| STATE-1, STATE-2 | Accepted as proposed: shop accepts or declines SCHEDULED; one transition table keyed by (cart type, status); Schedule row `ACCEPTED to READY`. |
+| ISO-1, ISO-2, ACCESS-1 | Accepted, with a stronger rule: a Schedule order is part of a bulk order and is NEVER dispatched per order. Rider dispatch for Schedule is a separate bulk flow, built later when Samivan says so. Build the one gate (`isScheduleMember`) as a single seam every dispatch entry calls (manual assign, rider accept, dispatch listener), so the bulk flow plugs in later without touching the Eat Now path. The `READY` status event may still fire; the listener ignores Schedule members. |
+| STATE-3 | The customer decides. When a member is declined (partial fulfilment), the customer is offered "cancel the whole group" (refund of the remaining members). That offer sits behind an on/off switch; a DECLINED member never blocks the cancel. Where the switch lives (platform setting or per area) is chosen in the slice's `/gcp`; default ON. |
+| API-1 | Tab count refreshes by window-focus refetch plus a slow interval while the Schedule tab is open. A socket push is a later option, not now: it needs in-process fan-out that breaks past one backend instance, and notifications are 2d. |
+| TIME-1 | Stopgap: the admin watches unaccepted Schedule orders and can manually decline one, which refunds the customer (admin decline of SCHEDULED already exists). Slice includes a small admin read listing unaccepted Schedule orders by slot. No auto-decline job. |
+| EVOL-1, PERF-1 | Unchanged: verify the same-day checkout guard; EXPLAIN the tab query on a branch before any index. |
+
+Slice scope (one backend slice, then web tab): transition table and member routing, shop accept and decline of SCHEDULED, `isScheduleMember` gate, Eat Now board exclusion, Schedule tab list, count and detail, group-cancel switch, admin unaccepted list. Web (Ninjasu_Web Schedule tab) follows. Next step: `/gcp`, then build with Codex review.
+
+### Second pass 2026-10-30 (Opus, re-read against code)
+| ID | Rank | Finding | Proposed |
+|---|---|---|---|
+| EVOL-1 | closed | Same-day is already enforced: `ServiceAreaValidator` refuses `SCHEDULE_SAME_DAY_ONLY` unless advance days and window offset are 0 while Schedule is on; the cart writer uses today. | Tripwire: lifting `SCHEDULE_SAME_DAY_ONLY` reopens this decision (hidden-until-release). Comment at that rule. |
+| TIME-1 | confirmed | Admin decline of SCHEDULED exists and raises the decline refund and restock (`ScheduleCancelServiceImpl.declineMember`). | Stopgap holds. |
+| STATE-4 | must decide | With no per-order dispatch, nothing moves a Schedule order past READY. Orders stall at READY; the customer never sees delivered; 2c settlement inputs that key on DELIVERED never fire. | Proposed: until bulk dispatch exists, the admin (or the shop) marks a whole slot's READY orders OUT_FOR_DELIVERY and DELIVERED in bulk. |
+| STATE-5 | must decide | Conflict between STATE-3 and the accept freeze. Partial fulfilment means shop A ACCEPTED and shop B DECLINED, which is exactly when whole-group cancel is frozen. Offering "cancel the whole group" then cancels A's accepted order. | Proposed: the offer cancels A only before A reaches READY; A's restaurant is not paid for it unless the contract says so (add a row to `02-Domain/restaurant-schedule-terms.md`). |
+| ISO-3 | keep, specify | One predicate for "Schedule member": `order.group_id IS NOT NULL` (set at creation, not updatable), not `cart_type`. | Use it in the gate, the board exclusion and the transition table. |

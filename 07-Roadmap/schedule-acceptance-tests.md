@@ -8,7 +8,7 @@ apps: [backend, web, customer, rider]
 module: "schedule"
 anchors: []
 verified_against: "schedule-plan.md items #1-#41, design review P1-P17 (2026-10-15)"
-updated: 2026-10-24
+updated: 2026-10-30
 review: schedule-design-review.md
 ---
 
@@ -118,6 +118,26 @@ Companion to [schedule-implementation-order.md](schedule-implementation-order.md
 | T2b-37 | (2b.12) A shop caller (owner, manager) cannot write a dine-in price through ANY existing path: add-on group create/update, inline option creation on item create/update, shared group options; each path writes only the online price | I | Codex review 2026-10-18 |
 | T2b-38 | (2b.12) The Ninjasu admin lowers a dine-in price so an unchanged online price is now above the cap: the option is flagged and hidden from Schedule | I | Codex review 2026-10-18 |
 | T2b-39 | (2b.12) The same dish shows the same online price on home, search, wishlist, shop menu, cart and checkout; the POS and guest QR show the dine-in price | I | Codex review 2026-10-18 |
+
+### 2b.8 to 2b.10 Razorpay test-mode rehearsal (added 2026-10-30; built, nothing run against real Razorpay)
+
+Run in Razorpay TEST mode with `schedule_enabled` on for one test area only. Backend `feature/schedule` at `156fbc9`; SQL (slice 4, group Block 5) applied 2026-10-30. Mark each row with the group id and result.
+
+| ID | Case | Kind | Source |
+|---|---|---|---|
+| T2b-R1 | Happy path: checkout, pay, verify, then webhook; group PAID once, members confirmed, holds converted | M | 2b.9 |
+| T2b-R2 | Verify and webhook race: both arrive together; one settlement, no double confirm | M | 2b.9 |
+| T2b-R3 | Duplicate capture on the same group: the extra capture is refunded, group stays PAID (behaviour unverified) | M | 2b.9 |
+| T2b-R4 | Captured amount differs from the payable (wrong amount): group goes CAPTURE_MISMATCH and the real captured amount is refunded | M | 2b.9 |
+| T2b-R5 | Capture after the group was cancelled, failed or swept: orphan capture refunded in full | M | 2b.9 |
+| T2b-R6 | Pay after the hold deadline: checkout replay refuses (fix 156fbc9); a late capture is refunded, stock not double-sold | M | 2b.8, 2b.9 |
+| T2b-R7 | Gateway order creation fails at checkout: group FAILED, holds voided, cart reopens | M | 2b.8 |
+| T2b-R8 | Same idempotency key retried concurrently: one Razorpay order, both calls return the same group | M | 2b.8 |
+| T2b-R9 | Cancel the whole group before `cancel_until_at` after payment: all-or-nothing refund lands, restock | M | 2b.10 |
+| T2b-R10 | Restaurant declines one member: that member refunded, holds restocked, others unaffected | M | 2b.10 |
+| T2b-R11 | Stale-group hourly sweep resolves an unpaid CREATED group past its hold | M | 2b.9 |
+| T2b-R12 | Refund webhook closes the refund row; a failed refund shows FAILED and can be retried from the admin board | M | refunds |
+| T2b-R13 | Member totals plus group fees and round-off equal the Razorpay amount in paise on a multi-shop group | M | 2b.8 |
 
 ### 2b.3 Pricing (added 2026-10-24; slices a and c built, b and the wiring open)
 Backend branches `feature/schedule-2b3` (merged, PR #62) and `feature/schedule-2b3c` (PR #63). Status: **Done** = executable test exists and passes; **Open** = still to write.
