@@ -204,6 +204,8 @@ Sizing: 100 open screens is about 100 list requests a minute during the lunch wi
 ### Rollout
 App ships after the backend note change. N-1: older app versions never call the group endpoints, so they are unaffected by the merged backend; a new app against a backend without the group endpoints shows a source-specific "could not load Schedule orders" and keeps regular orders. Order: backend note PR into `feature/schedule`, then the app PR into the app's `feature/schedule`. Nothing goes to `main` without asking.
 
+Device check (open gate, Samivan will test later, 2026-11-03): layout, safe-area footer, long shop lists and polling behaviour on a physical Android phone are NOT verified by the app PR; jest and tsc only prove the logic. Test with a group created through the API (shop declined, shop accepted, refund rejected with a note, payment-failed group, a group with two shops).
+
 ### Design versions
 | version | phase | date | what changed | why |
 |---|---|---|---|---|
