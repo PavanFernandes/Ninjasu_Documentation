@@ -110,7 +110,7 @@ Board (needs a browser on the admin host, signed in as the platform admin)
 - [ ] **C** A non-admin account and a signed-out browser cannot open `/admin/refunds` (proxy redirect) and the three decision calls return 401/403.
 - [ ] **C** Dark mode: badges, banner and dialog read correctly; mobile width: the table scrolls sideways and the dialog scrolls.
 
-App (device or Expo build against the branch backend)
+App (device or Expo build against the branch backend). Group refunds on the Schedule group screen use the same wording; they are tested in [manual-test-todo-schedule-my-orders.md](manual-test-todo-schedule-my-orders.md), section C.
 - [ ] **C** Order summary: INITIATED shows "Refund initiated" with the plain reason; REFUNDED shows "Refunded on <date>"; NOT_APPROVED shows "Refund not approved: <note>" plus "Contact support if you have questions."; two refunds on one order show a "Refunds" heading.
 - [ ] **C** An order whose payment status is only REFUND_PENDING shows "Refund initiated" in the payment row, never "Refunded"; REFUNDED shows "Refunded".
 - [ ] **C** An order response without `refunds` (point the app at an old backend or strip the field) still renders the summary.
