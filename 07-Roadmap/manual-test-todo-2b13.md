@@ -50,8 +50,8 @@ A Neon branch is an instant copy of the production database (copy-on-write, so i
 - [ ] **S** Boot it with file 5 NOT run: it must refuse to start and name `platform-seller-profile-migration.sql`.
 
 ## C. Database rules (psql on the branch)
-- [ ] `update commission_slab set flat_amount = 1;` fails ("append-only"); same for `delete from commission_slab`, `truncate commission_slab`.
-- [ ] Same three statements fail on `commission_rate_card_version`, `commission_rate_card_assignment` and its cancellation table.
+- [x] `update commission_slab set flat_amount = 1;` fails ("append-only"); same for `delete from commission_slab`, `truncate commission_slab`. (sprint 2026-11-04, smoke-cut 1.24)
+- [x] Same three statements fail on `commission_rate_card_version`, `commission_rate_card_assignment` and its cancellation table. (sprint 2026-11-04, smoke-cut 1.24)
 - [ ] `update commission_rate_card set name = 'X' where is_system_default;` fails; renaming "Standard" works; `delete from commission_rate_card` fails.
 - [ ] A second system default card cannot be inserted (unique partial index).
 - [ ] Two cards named `standard` and `STANDARD ` cannot coexist (case and space insensitive).
@@ -71,13 +71,13 @@ A Neon branch is an instant copy of the production database (copy-on-write, so i
 - [ ] Create a card with `currencyCode: "USD"` and assign it to an INR shop: refused with `CURRENCY_MISMATCH`, nothing written. Assigning the system default card to any shop is allowed.
 - [ ] Assign Standard v1 starting NOW to a never-assigned shop: accepted (first real card).
 - [ ] Assign Standard v2 to the same shop starting in 1 hour: refused (24h notice); at exactly 24h ahead: accepted; "apply immediately" without a reason: refused, with a reason: accepted.
-- [ ] A start earlier than or equal to the shop's latest scheduled change: refused (`NOT_AFTER_EXISTING`).
+- [x] A start earlier than or equal to the shop's latest scheduled change: refused (`NOT_AFTER_EXISTING`). (sprint 2026-11-04, smoke-cut 1.25)
 - [ ] Both channels in one request writes two rows with one `operationId`; if one channel breaks a rule neither is written.
 - [ ] Stale `expectedLatest` (send a wrong id): 409 and nothing written.
 - [ ] Cancel a scheduled change: accepted; the resolver ignores it (order test in F); cancelling a started change: refused; cancelling twice: 409.
 - [ ] After a cancel, a new change at exactly the cancelled start time is refused (`DUPLICATE_EFFECTIVE_FROM`); a later time works.
 - [ ] Assign the default "No commission" card back to a shop that had a real card: accepted only with 24h notice.
-- [ ] **Two admins at once** (two terminals, same shop, same `expectedLatest`): exactly one succeeds, the other gets 409.
+- [x] **Two admins at once** (two terminals, same shop, same `expectedLatest`): exactly one succeeds, the other gets 409. (sprint 2026-11-04, smoke-cut 1.25)
 - [ ] Bulk: create Standard v2, then `GET .../commission-rate-card-versions/{v2}/affected` lists only shops whose LATEST row is on v1 (not shops on another card, not deleted shops, not shops already on v2); `POST .../move` moves exactly that set with one `operationId`; a stale pair rejects the whole move and writes nothing; 201 pairs refused.
 - [ ] `GET .../on-default?channel=EAT_NOW` lists shops with no row ("Never assigned") and shops assigned the default on purpose ("Set to no commission"); a shop with a real card is absent; page size above 100 or page above 1000 refused.
 

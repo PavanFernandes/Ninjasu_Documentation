@@ -33,10 +33,10 @@ Plan: [refund-approval-plan.md](refund-approval-plan.md). Judge findings that th
 
 ## B. Real-database facts (what mocks cannot prove)
 - [ ] **S** `select conname from pg_constraint where conrelid = 'payment_refunds'::regclass` lists the 7 `chk_payment_refunds_*` constraints plus the self FK and the orders FK; `payment_refund_allocations` has its check and 2 FKs.
-- [ ] **S** Subject check: insert a row with both `order_id` and `order_group_id` null, and one with both set: both refused.
+- [x] **S** Subject check: insert a row with both `order_id` and `order_group_id` null, and one with both set: both refused. (sprint 2026-11-04, smoke-cut 1.1)
 - [ ] **S** Decision check: a SYSTEM row with status SUBMITTING and no `decided_by_admin_id` is refused; a REJECTED row with no `decision_note` is refused; approved above requested is refused; SUBMITTING with no `lease_until` is refused.
-- [ ] **S** Unique obligation index: two live rows with one `obligation_key` are refused; the same key is allowed once the first row is FAILED (partial index).
-- [ ] **S** Unique receipt and unique gateway refund id: duplicates refused; many NULL gateway ids allowed.
+- [x] **S** Unique obligation index: two live rows with one `obligation_key` are refused; the same key is allowed once the first row is FAILED (partial index). (sprint 2026-11-04, smoke-cut 1.3)
+- [x] **S** Unique receipt and unique gateway refund id: duplicates refused; many NULL gateway ids allowed. (sprint 2026-11-04, smoke-cut 1.4)
 - [ ] **S** Allocation check: `component = 'ORDER'` needs an `order_id`, a fee component must have none; amount 0 refused. Deleting a refund cascades its allocations; deleting an order that has refunds is refused.
 - [ ] **C** `sumOpenAmountForOrder`: REQUESTED counts the requested amount, SUBMITTING/ISSUED/PROCESSED the approved amount, REJECTED and FAILED nothing.
 - [ ] **C** `findLegacyRefundPending` and `findLegacyRefundOwed` return the right orders (REFUND_PENDING with and without a refund id, with and without refund rows).
@@ -107,7 +107,7 @@ Board (needs a browser on the admin host, signed in as the platform admin)
 - [ ] **C** Conflict: open a REQUESTED row in two admin sessions, decide it in one, then decide in the other. The second shows the backend message, then a banner "This refund changed while you were reviewing it. It is now: ..." and the Approve and Reject buttons go away.
 - [ ] **C** Close race: click Approve, close the dialog at once, open another refund; the new dialog stays open when the first answer arrives.
 - [ ] **C** Opening a row refreshes it (one `GET /api/admin/refunds/{id}`); the dialog never offers Approve for a row that is no longer REQUESTED.
-- [ ] **C** A non-admin account and a signed-out browser cannot open `/admin/refunds` (proxy redirect) and the three decision calls return 401/403.
+- [x] **C** A non-admin account and a signed-out browser cannot open `/admin/refunds` (proxy redirect) and the three decision calls return 401/403. (sprint 2026-11-04, smoke-cut 3.2)
 - [ ] **C** Dark mode: badges, banner and dialog read correctly; mobile width: the table scrolls sideways and the dialog scrolls.
 
 App (device or Expo build against the branch backend). Group refunds on the Schedule group screen use the same wording; they are tested in [manual-test-todo-schedule-my-orders.md](manual-test-todo-schedule-my-orders.md), section C.
