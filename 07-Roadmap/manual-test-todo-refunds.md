@@ -89,8 +89,8 @@ Plan: [refund-approval-plan.md](refund-approval-plan.md). Judge findings that th
 - [ ] **C** Net sales for a shop and period with one processed partial: the figure drops by the partial and the order is not counted twice.
 
 ## H. Idempotency keys (F8)
-- [ ] **C** Customer B sends customer A's `Idempotency-Key` to place order: 409 and no data about A's order. Customer A repeating the key gets the same order.
-- [ ] **C** Customer B sends customer A's key to checkout: 409; A's own PENDING_PAYMENT key still resumes.
+- [ ] **C** Customer B sends customer A's `Idempotency-Key` to place order: 400 with the generic message "Checkout attempt unavailable" and no data about A's order. Customer A repeating the key gets the same order.
+- [ ] **C** Customer B sends customer A's key to checkout: 400 with the generic message "Checkout attempt unavailable"; A's own PENDING_PAYMENT key still resumes.
 
 ## I. Web board and app copy (BUILT 2026-10-29, committed on branches, never run in a browser or on a device)
 Code: Ninjasu_Web `feature/refund-board-web` (`69359a3`), Food-Ninja-Frontend `feature/refund-app-copy` (`86e40ac`), neither pushed nor merged. Checked so far: typecheck and lint clean, web unit spec `tests/refund-utils.spec.ts` (36), app `__tests__/orders/refundCopy.test.ts` (16), a Codex correctness lens on both. Board at `/admin/refunds`. Run against the Neon branch from section A, never prod.
