@@ -36,13 +36,18 @@ Food Ninja is multi-vertical. We support three verticals (cart_types):
 | `FOOD`    | Restaurants      |
 | `GROCERY` | Zepto-style      |
 | `PRODUCT` | Ecommerce        |
+| `SCHEDULE`| Restaurants, ordered for a delivery slot today (see "Schedule cart") |
+
+`SCHEDULE` is a fulfilment mode, not a vertical: `CartType.vertical()` maps it to `FOOD`, and
+every vertical rule (GST, commission) reads `vertical()`, never the raw type.
 
 Rules:
 
 - A user may have **at most one ACTIVE cart per `cart_type`**.
 - A user **can** have parallel carts across different `cart_type`s simultaneously
   (e.g. 1 FOOD cart + 1 GROCERY cart at the same time — no conflict).
-- Within a single `cart_type`, only **one shop at a time** (Swiggy/Zepto rule).
+- Within a single `cart_type`, only **one shop at a time** (Swiggy/Zepto rule),
+  except `SCHEDULE`, which holds up to the area's `schedule_max_shops_per_cart` shops.
 - `cart_type` is **permanent** for a session. It is set at session creation from
   `shop.vertical` and can never change.
 - If `shop.vertical` is not yet implemented, default `cart_type` to `FOOD` with
@@ -88,6 +93,45 @@ details (existing shop name + new shop name). The frontend shows the
 A conflict across different `cart_type`s (FOOD vs GROCERY) is **not** a conflict —
 the new session is created alongside the existing one.
 
+### Schedule cart
+
+A Schedule cart holds dishes from up to `schedule_max_shops_per_cart` restaurants (area
+setting, default 3) for **one area, one service date (today) and one slot**. Built in
+2b.5 (cart only: add, read, edit, clear, accept changes; checkout is 2b.8).
+
+- **Add**: `POST /api/cart/items` with an optional `schedule: { areaId, serviceDate, slotId }`.
+  Without it the add is Eat Now, unchanged. `serviceDate` must be today in the area's zone.
+- **Availability** comes from `ScheduleAvailabilityResolver` only: never live stock
+  (`StockLedgerService`) and never the live add-on `is_available` toggle (an option is
+  usable unless switched off for Schedule). Max per line is
+  `min(app.cart.default-max-line-qty, remainingQty)`.
+- **Price** is the online price, snapshotted at add (same as Eat Now delivery carts).
+- **One live cart per user** (the existing unique index on user + `cart_type`).
+  A live cart on another area, date or slot returns 409. A **dead** cart (date passed,
+  slot's last call passed, or slot deleted) is abandoned by the next add, with an `INFO`
+  message ("Your 12:30 cart closed and was cleared"). Reads never write.
+- **Lines carry their own `shop_id`**; the session's `shop_id` is NULL for a Schedule cart
+  (`chk_cart_sessions_shape`). `cart_items.shop_id` is NULL only on an Eat Now line written
+  before 2b.5; read it through `CartItem.shopIdOr(session)`.
+- **Read** (`GET /api/cart?type=SCHEDULE`): `schedule` block `{ areaId, areaName, serviceDate,
+  slotId, slotStart, maxShops, state }` with `state` = `OPEN` | `SLOT_CLOSED` | `DATE_PASSED`.
+  Money: `subtotal`, `deliveryFee` (area), `packagingFee` (area); `taxTotal` and `taxLines`
+  are null and a message says "Taxes are added at checkout" (checkout quotes tax).
+- **Checkout**: `POST /api/orders` and `POST /api/payments/checkout` reject
+  `cartType = SCHEDULE` (400). Schedule checkout is 2b.8.
+
+#### Schedule errors
+
+| Status | Body `error` | When | Extra fields |
+|--------|--------------|------|--------------|
+| 409 | `SCHEDULE_CART_SLOT_CONFLICT` | live cart on another area, date or slot | `existing`, `requested`: `{ areaId, areaName, serviceDate, slotId, slotStart }` |
+| 409 | `SCHEDULE_CART_SHOP_LIMIT` | one more restaurant than the area allows | `maxShops`, `shopsInCart: [{ shopId, shopName }]` |
+| 409 | `SESSION_LOCKED` | cart locked (existing rule) | |
+| 400 | `SCHEDULE_DISH_REFUSED` | dish not orderable now, or the chosen slot closed | `reason` (a `ScheduleReason` name: `ORDER_BY_PASSED`, `SOLD_OUT`, `SLOT_CLOSED`, `OFF`, ...), `menuItemId` |
+
+The app branches on `reason`, never on `message`. Other 400s (wrong date, unknown slot,
+unknown or Schedule-off option, missing required group, quantity limits) are plain messages.
+
 ### Pricing & Identity — Snapshot at Add, Validate at Read
 
 This is the most important rule in the cart.
@@ -132,6 +176,14 @@ item with one of:
 | `UNAVAILABLE`    | Menu item is no longer available or active           |
 | `ADDON_REMOVED`  | A snapshotted addon no longer exists on the menu     |
 | `NAME_CHANGED`   | Live `item_name` or `item_image_url` differs         |
+| `ORDERING_CLOSED`| Schedule only: the dish's order-by time has passed   |
+| `SOLD_OUT`       | Schedule only: fewer portions left than the minimum order |
+
+On a Schedule cart every line is judged by the availability resolver for the cart's own
+slot, so `UNAVAILABLE` there means the dish is off Schedule, the restaurant is closed or not
+in the area, etc.; a chosen option switched off for Schedule is `ADDON_REMOVED`.
+`PUT /api/cart/accept-changes` deletes lines that are `UNAVAILABLE`, `ADDON_REMOVED`,
+`ORDERING_CLOSED` or `SOLD_OUT`.
 
 - Backend **does not** auto-update snapshots on read.
 - Customer must explicitly accept changes via `PUT /api/cart/accept-changes`.
@@ -285,7 +337,7 @@ the request body.
 | 200  | Success                                                               |
 | 400  | Validation failure (bad quantity, required addon missing, idempotency conflict) |
 | 404  | `cartItemId` not found, or not owned by this user                     |
-| 409  | `DIFFERENT_SHOP_CART_EXISTS` (different shop) or `SESSION_LOCKED`     |
+| 409  | `DIFFERENT_SHOP_CART_EXISTS` (different shop), `SESSION_LOCKED`, `SCHEDULE_CART_SLOT_CONFLICT` or `SCHEDULE_CART_SHOP_LIMIT` |
 
 Every mutating endpoint returns the **full refreshed `CartResponse`** so the
 client never needs a second round-trip after a write.
@@ -312,7 +364,7 @@ coupons, taxes, surge, distance-based delivery) is computed at order placement.
 | `subtotal`             | decimal   | Sum of snapshot selling prices for selected items × qty  |
 | `totalSavings`         | decimal   | Sum of `(mrp - sellingPrice) × qty` for selected items   |
 | `deliveryFee`          | decimal?  | Shop-level base fee from `delivery_config`; null if none |
-| `platformFee`          | decimal   | Platform-wide constant (`app.cart.platform-fee`)         |
+| `platformFee`          | decimal   | Always 0 today (no platform fee is charged); a future fee comes from the service area |
 | `freeDeliveryAbove`    | decimal?  | Threshold from `delivery_config`; null if not configured |
 | `amountToFreeDelivery` | decimal?  | `max(0, freeDeliveryAbove - subtotal)`; null if no threshold |
 | `lastUpdatedAt`        | ISO 8601  | Most recent session/item update — drives cache staleness |
