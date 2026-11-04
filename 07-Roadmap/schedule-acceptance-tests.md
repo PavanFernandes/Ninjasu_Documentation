@@ -96,7 +96,7 @@ Companion to [schedule-implementation-order.md](schedule-implementation-order.md
 | T2b-16r | A cancelled order cannot be assigned, accepted, picked up or marked out for delivery by staff or rider | I | geld invariant 12 |
 | T2b-16s | A late cancel of an order with a live delivery cancels the delivery in the same transaction; the rider receives "Customer cancelled: do not deliver"; a failed push is retried; the rider app closes the job | I/E | geld L-17 |
 | T2b-17 | **(invariant)** A restaurant decline and an ops cancel at the same time never refund more than captured; the delivery fee is refunded once | I | P14 |
-| T2b-18 | Release job: orders with `release_at` at or before now become PLACED once; two job instances race safely; catches up after a restart; a voided order is ignored; the reservation is kept | I | 2b.11, C2 |
+| T2b-18 | (PARKED 2026-10-30, decision 2b.11: same-day orders go SCHEDULED to ACCEPTED, no release job; do not test) Release job: orders with `release_at` at or before now become PLACED once; two job instances race safely; catches up after a restart; a voided order is ignored; the reservation is kept | I | 2b.11, C2 |
 | T2b-19 | The hourly reconciliation and refund jobs do not touch a paid SCHEDULED order that is hours from its release | I | C13 |
 | T2b-20 | `voidReservation` is idempotent: called twice, capacity and stock return once | I | C2 |
 | T2b-21 | **(invariant)** Checkout retry with the same group key recomputes the same member keys and creates no second group or order; `orders.idempotency_key` uniqueness holds across members | I | 2b.4 |
