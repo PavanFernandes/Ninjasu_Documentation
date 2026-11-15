@@ -65,7 +65,7 @@ Orchestrator (one Opus session, not a lane): open decisions, the batch geld, mer
 
 | # | Decision | Blocks | Recommendation |
 |---|---|---|---|
-| OD1 | D3: where the Eat Now / Schedule switch lives; HSR intro screen for the pilot? | 4.1 | Home top toggle; intro screen yes, shown once |
+| OD1 | D3: where the Eat Now / Schedule switch lives; HSR intro screen for the pilot? | 4.1 | **DECIDED 2026-11-15 (Samivan):** toggle in the Home hero; intro shown once, plus a "How it works" link above the delivery times to replay it; heading "When should we deliver?". Design: `schedule-phase4-app-design.html`; build plan: `schedule-phase4-app-implementation-plan.md` |
 | OD2 | L1.0 backend CI test job | nothing (speed) | yes: the biggest saving, CI then runs the suite |
 | OD3 | App CI (tsc + eslint + jest on PRs) as a Lane 2 slice before 4.1 | nothing (speed) | yes, small |
 | OD4 | Batch schema geld | 3.2 | run in the orchestrator while Lane 1 builds E2c/E3/3.1 |
@@ -91,13 +91,13 @@ Orchestrator (one Opus session, not a lane): open decisions, the batch geld, mer
 | Slice | Lane | State | PR | Note |
 |---|---|---|---|---|
 | L1.0 | 1 | waiting on OD2 | | |
-| E2c | 1 | queued | | |
-| E3 | 1 | queued | | worktree created at start |
-| 3.1 | 1 | queued | | |
+| E2c | 1 | merged 2026-11-15 (e1f613f into feature/schedule) | #93 | OD2 = no (local tests). Webhook-only trigger, route-split fails closed. Full suite 2639 (+1 tripwire fixed), 9/9 mutants killed, Codex x2. Open: customer summaries show extra refund; NULL-payment-id data audit |
+| E3 | 1 | merged 2026-11-15 (6970837 into feature/schedule) | app #40 | Built in the main app folder, no worktree. Shared `PaymentConfirmingNotice` (`confirming` / `checking`), `isCapturePending()`. OD5: no action while pending, no client-side auto-cancel. jest 486 green, Codex reviewed. NOT device-tested (B2). Open: "Payment failed" title on a rejected checkout needs a backend error code; no help contact in the app; `OrderTrackingScreen.tsx` ~354 lines |
+| 3.1 | 1 | in progress | | web `feature/schedule-admin-service-areas`; scope = service areas page + shop area assignment (the wider row in schedule-implementation-order.md, commission/audit/pricing, is not in this slice) |
 | 3.2-3.5 | 1 | queued | | 3.2 waits on OD4 |
-| 4.1 | 2 | waiting on OD1 | | |
-| 4.2 | 2 | queued | | |
-| 4.3 | 2 | queued | | waits on E3 merged |
+| 4.1 | 2 | merged | app PR #38 (9bd6536) | tsc, lint, 321 jest green; Codex review + /judge (focused, 7 lenses) done and fixed; device test pending (needs a seeded area); HomeScreen split deferred to the next Home change; OD3 app CI still unanswered |
+| 4.2 | 2 | merged 2026-11-15 | app PR #39 (a225fcb into feature/schedule) | tsc, lint, 460 jest green; Codex review + /judge (full, ungraded: reuse and conventions lenses rejected twice) fixed; device test pending (needs a seeded area with a Schedule menu); open: second option set for a dish already in the cart, Schedule imports AddonSheet and getMenuItem (RN-STRUCT-02 needs a written decision) |
+| 4.3 | 2 | E3 merged (app PR #40): 4.3a ready to start (new session), then 4.3b, 4.3c | | plan: schedule-phase4-app-implementation-plan.md Phase 3; reuse PaymentConfirmingNotice |
 | 4.4 | 2 | queued | | |
 
 ## Brief — Lane 1 (payments, then ops board)
