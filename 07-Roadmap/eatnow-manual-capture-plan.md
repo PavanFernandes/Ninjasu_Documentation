@@ -208,6 +208,24 @@ New open decisions:
 - B2 (device, real money): UPI authorise → capture; cancel race lapses at expiry; backend killed between accept and
   capture, sweep finishes it.
 
+### E2c (BUG-2, backend PR #93) tests still TODO - test later (Samivan 2026-11-15: unit/DB tests are done and green, these wait)
+
+Done and green locally: full suite 2639, 9/9 mutants killed, real-PostgreSQL repository sums and legacy sweeps.
+
+| # | Test | Where | Why it matters |
+|---|---|---|---|
+| T1 | Pay an already-paid Eat Now order a second time in Razorpay TEST mode; confirm what Razorpay does (immediate auto-refund, or a second captured payment and a webhook) | device / test mode (C4 E0 check, never run) | If Razorpay always auto-refunds, the new path rarely fires; if not, this is the real proof |
+| T2 | With a second captured payment: webhook raises the refund request; admin web shows it with payment id B; approve in full; Razorpay refunds payment B; order stays PAID; `orders.refund_id` and `refunded_on` untouched | test mode + admin web | The only end-to-end check of the gateway call for an extra payment |
+| T3 | `refund.processed` webhook for the extra refund is matched by gateway refund id (HANDLED, not NOT_HANDLED); an unmatched external refund on payment B is only logged | real PostgreSQL or test mode | `RefundWebhookHandler` assumes the order owns the payment id |
+| T4 | Admin retry of a FAILED extra refund end to end (no allocation copied, per-payment cap) | admin web | Retry path is unit-tested only |
+| T5 | Race two real webhook deliveries (A and B) on a CREATED order: one order payment, one B obligation, both audit rows kept | real PostgreSQL, real threads (`ConcurrentRace`) | Order row lock is relied on, not tested |
+| T6 | Real-PostgreSQL test of `ExtraCaptureOrderRefundServiceImpl` against `ux_payment_refunds_obligation` (FAILED then re-raise) | real PostgreSQL | Idempotency is unit-tested with mocks only |
+| T7 | Production data audit before deploy, expect 0: `SELECT count(*) FROM payment_refunds r JOIN orders o ON o.id = r.order_id WHERE r.razorpay_payment_id IS DISTINCT FROM o.razorpay_payment_id;` | Neon, read-only (Samivan runs) | The own-payment filter would hide a refund row whose payment id differs from the order's |
+| T8 | Route-split shop with a second captured payment: confirm it only logs ERROR and creates no row; after the Route round trip (C9) decide whether to allow it and what `reverse_all` does to an extra payment | test mode with a linked account | Today an admin must refund it in Razorpay by hand |
+| T9 | Customer app My Orders: the extra refund shows as a normal "refund initiated" line; confirm that wording is acceptable (product call) | device | Customer summaries do not mark extra payments |
+| T11 | Unrefundable extra captures (route-split shop, missing shop, already refunded outside the system) only log ERROR: no refund row, no admin push. Add an admin-visible record (a new `RefundAttentionEvent` kind that works without a refund id, or a row) so a double charge cannot go unseen. Also: a FAILED extra refund plus a redelivery under a new event id makes a second request (the cap stops a double refund) | design, then build | Code review of PR #93 (2026-11-15) |
+| T10 | Manual-capture orders: a second captured payment (the capture-adoption path ignores PAID orders), and a FAILED manual order that has a stored payment id (the refund helper prefers the stored id over the supplied one) | with E2/E3 | Both are out of scope of E2c and must be covered before the manual-capture flag is on |
+
 ## Quality brief (/gcp, 2026-11-13, for E1a + E1b)
 
 E1 split into E1a (pure refactor) and E1b (schema-facing) by Samivan 2026-11-13. Rulebook INDEX reported stale; card
