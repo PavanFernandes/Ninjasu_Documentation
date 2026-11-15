@@ -181,7 +181,11 @@ Backend branches `feature/schedule-2b3` (merged, PR #62) and `feature/schedule-2
 | T2d-03 | Accept and Ready fan out through the existing transition validator; ticket status is derived from the orders | I | #19 |
 | T2d-04 | "Can't make": creates a pending request and refunds nothing; ops approval with chosen orders cancels those lines, partially refunds and amends the ticket; rejection changes nothing | I | #41 |
 | T2d-05 | A two-restaurant group gets one push per stage (paid, preparing, picked up, delivered, refunded); a retry does not duplicate | I | #39 |
-| T2d-06 | Live counts are served from the cache: polling does not query the database; a reservation shows within 30 seconds | I | P16 |
+| T2d-06 | **(reworded 2026-11-05, plan 2d.1+2d.3 PERF-1)** Live counts are served from the shop-day cache: the read-model loader (at most 5 queries) does not run per poll, only after a change or the 10 minute drift guard; a reservation, void or status change shows on the next poll. Each poll still costs the login lookup and two permission lookups (`JwtAuthFilter`, `PermissionServiceImpl`) plus one shop lookup; `nextPollSeconds` is 30 inside the lunch window and 300 outside | I | P16 |
+| T2d-06a | **(owed: needs a real test database)** Payment confirm and the freeze race on the same slot-day in both orders: the order is in v1 or in one `ORDER_ADDED` amendment, never in neither or both | I | plan I7, STATE-1 |
+| T2d-06b | **(owed: needs a real test database)** A restaurant decline (`voidMember`) running during the freeze does not deadlock (no ticket table references `orders`) | I | plan LOCK-1 |
+| T2d-06c | **(owed: needs a real test database)** The trigger blocks UPDATE, DELETE and TRUNCATE on slot freeze, publications, ticket orders and amendments; the unique keys refuse a second publication for one shop/slot/day and a duplicate amendment source key | I | plan I2-I6 |
+| T2d-06d | **(owed: needs a real test database)** After a crash between the freeze commit and the send, the boot sweep delivers the `RELEASED` event once more and a consumer dedupes by `event_key` | I | plan S3, ISO-1 |
 | T2d-07 | **(invariant)** An ops user for area A cannot act on area B's order; a forged area id is ignored; ADMIN bypass is audited | I | P2 |
 | T2d-08 | Address correction is allowed before batching and rejected after unless the group is removed from the batch; both audited | I | #38 |
 | T2d-09 | Frozen contracts: fixtures validate against the responses | C | 2d.6 |

@@ -14,7 +14,7 @@ Backend only. Customer screens come in phase 4; the API contract is fixed here s
 | # | question | answer | effect |
 |---|---|---|---|
 | 1 | Sequencing with 2b.2 | Land 2b.2 first | 2b.5 branches from `feature/schedule` only after PRs #59-#61 are merged; the cart reuses `ScheduleAvailabilityResolver` and the one Schedule add-on function (DA2-5) |
-| 2 | How a Schedule cart is told apart | New `CartType.SCHEDULE` | every existing `FOOD` lookup (cart, checkout, payment confirm at `PaymentServiceImpl.java:315`) can never pick up a Schedule cart; the unique index `idx_one_active_cart_per_user_per_type` is unchanged |
+| 2 | How a Schedule cart is told apart | ~~New `CartType.SCHEDULE`~~ **Superseded 2026-11-15 (D1, `fulfilment-mode-vertical-design-review.md`): `cart_sessions.fulfilment_type`; a Schedule cart is `FOOD` + `SCHEDULE`; lookups key on all three; SQL `db_manual/cart-fulfilment-split-migration.sql`** | every existing `FOOD` lookup (cart, checkout, payment confirm at `PaymentServiceImpl.java:315`) can never pick up a Schedule cart; the unique index `idx_one_active_cart_per_user_per_type` is unchanged |
 | 3 | How many Schedule carts; slot change | One active Schedule cart per user. Adding for another area, date or slot while that cart is live returns 409 and the customer clears it. A dead cart (date passed, slot closed or slot deleted) is cleared by the add itself, with a message (owner decision 1, 2026-10-27) | mirrors `DIFFERENT_SHOP_CART_EXISTS`; the existing unique index enforces "one" for free |
 | 4 | FulfilmentPolicy scope | Cart part only | the policy has the shop limit and the cart-type mapping; location (`OrderAssembler.java:108-116`) moves to 2b.8, payment owner to 2b.9, cancel to 2b.10, release to 2b.11 |
 

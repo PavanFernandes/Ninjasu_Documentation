@@ -3,7 +3,7 @@ id: ""
 title: "Schedule test sprint — risk-ranked smoke cut"
 summary: "About 60 checks chosen from the ~305 open manual items and the Schedule acceptance spec, ranked by risk: live-on-production features never tested first, then the Schedule money path, then web, then mobile. Backend items run as CLI scripts on a Neon branch; Claude writes and runs them, Codex reviews."
 type: how-to
-status: active
+status: closed-2026-11-04-real-payment-checks-pending
 apps: [backend, web, customer]
 module: "schedule"
 anchors:
@@ -154,6 +154,9 @@ Add one line per FAIL: id, what broke, fix commit, retest result.
 
 - F-J2a (doc vs code): the release job (T2b-18, row 2.16) is parked by decision 2b.11 (2026-10-30), so the acceptance test and this row are stale; mark T2b-18 parked.
 - F-J2b (test enabler): `GroupPaymentSweepJob.java:16` and `PaymentReconciliationJob.java:34` are hard-coded hourly crons with no schedule property and no admin trigger; sweep and reconciliation checks can only run by waiting for the top of the hour. A property placeholder on each cron would make them testable.
+
+## Sprint closure (2026-11-04)
+The test sprint on `feature/schedule` is closed for now. Backend, database-rule and browser checks that do not need a real captured payment are done (about 120 scripted backend checks, 15 browser checks); the checks that need a real captured Razorpay payment, a rider fixture or unit tests with injected failures stay pending (list below) and are picked up in a later round. Real bugs found and fixed: F-C1 (Schedule checkout 500 on an undiscounted dish, backend #75), F-E1 (refund dialog double submit), F-E2 (admin page gate), F-F1 (commission review clash), all merged into `feature/schedule` (web #46). Production data check: no real data changed during the sprint (94 real orders, last 2026-10-18; no real users, shops or refunds added). The sprint test data was removed from the production database on 2026-11-04 by a reviewed SQL script (dry-run in a rolled-back transaction first, then committed by Samivan) and verified read-only afterwards: 0 test users, shops, orders, groups, refunds, service areas or ZZ cards left; 94 real orders, 20 users and 2 shops intact; the append-only triggers were lifted only inside that transaction and are enabled again; four older ZZ items from 2026-09-26 on a real shop were deliberately left. The sprint harness (`keys/`, outside the repos) is kept for the next round and must be re-seeded first.
 
 ## Pending list (come back later)
 - Real captured Razorpay payment: 1.8, 1.9, 1.10, 1.11 (Retry half), 2.5-2.9, 2.13-2.15, 2.18, 3.1g (retry a failed refund in the board), 3.6x (accept, decline, ready on a paid group). Plan: serve a small local checkout page for a group created through the API, pay with a Razorpay test card or UPI, then run the continuation scripts; also covers 3.7.
