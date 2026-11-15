@@ -142,3 +142,12 @@ Backend branch `refactor/cart-fulfilment-split` (from `origin/feature/schedule`,
 - **Accepted risks:** live main reads carts by user + cart_type and can see a Schedule cart as an Eat Now cart, so only
   the dev account creates Schedule carts until this is on main (2b.5 MIG-3 already says so); add responses cached for
   idempotency before deploy replay as a miss (Schedule, dev only) or with `fulfilmentType` null (Eat Now, field unused).
+
+### Judge quick round (2026-11-15) and fixes
+
+`/judge quick` graded the working tree C+ (reuse C+, structure C+, conventions A-). All findings fixed the same day:
+- F1 default cart identity written 6 times in `CartController`: now `CartKey` (`dto/cart/CartKey.java`, defaults from the enums, `@RequestParam(required = false)`). `@ModelAttribute` was rejected: a bad `type` would return Spring binder text instead of the clean "Invalid value for parameter" 400.
+- F2 `CartServiceImpl` 721 -> 358 lines, longest method 132 -> 51: extracted `CartResponseAssembler`, `CartAddonValidator`, `EatNowCartAdder` (verbatim moves; Codex read-only comparison found no behaviour difference; only the logger category of a few log lines changed). `PosOrderServiceImpl` still holds its own copy of the add-on validation (comment now names `CartAddonValidator`); sharing it is a separate change.
+- F3 boot guard now requires the old `(user_id, cart_type)` index to be gone: `Kind.INDEX_ABSENT`, `DatabaseObjects.indexPresent` (any state) beside `validIndexExists` (renamed from `indexExists`: valid only).
+- Nine small items: unused imports, stale test-support comments, javadoc placement, constant position, two test names.
+Full suite after the fixes: 2599 tests, 0 failures. Not re-judged.

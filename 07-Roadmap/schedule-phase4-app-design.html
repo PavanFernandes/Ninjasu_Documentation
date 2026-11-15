@@ -1,0 +1,1414 @@
+<title>Schedule Lunch App Design</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=DM+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a review sheet. Page chrome is quiet and themed; phone frames render the real app tokens (light-only app). */
+:root {
+  /* page chrome */
+  --bg: #F6F3F4; --fg: #1E1A1C; --muted: #6B6468; --line: #E4DDE0; --card: #FFFFFF;
+  --mark: #E9003F; --note: #FFF0F3; --noteFg: #8A1030; --ok: #2E7D32; --okBg: #EAF4EA;
+  --phoneShell: #121214;
+  --display: "Inter", system-ui, sans-serif;
+  --body: "DM Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  /* app tokens, copied from constants/brand.ts (app is light-only, so these never flip) */
+  --a-primary: #FF2D5B; --a-primaryLight: #FFF0F3; --a-primaryDark: #E9003F;
+  --a-screen: #FCFCFC; --a-card: #FFFFFF; --a-input: #F5F5F5; --a-section: #F5F5F7;
+  --a-text: #1A1A1A; --a-text2: #666666; --a-muted: #888888; --a-hint: #999999; --a-disabled: #BBBBBB;
+  --a-border: #E0E0E0; --a-divider: #F0F0F0; --a-white: #FFFFFF;
+  --a-veg: #2E7D32; --a-vegLight: #F1F8E9; --a-nonveg: #C62828;
+  --a-amber: #FF9500; --a-amberLight: #FFF4E6; --a-warnText: #B45309;
+  --a-error: #D32F2F; --a-errorLight: #FDECEC; --a-dark: #1F2230; --a-discount: #1BA64C;
+  --a-scrim: rgba(0,0,0,0.45);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131012; --fg: #EFE9EC; --muted: #A79DA2; --line: #2E282B; --card: #1C181A;
+    --mark: #FF6A8A; --note: #2A161D; --noteFg: #FFB3C4; --ok: #7CC57F; --okBg: #16241A;
+    --phoneShell: #000000; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131012; --fg: #EFE9EC; --muted: #A79DA2; --line: #2E282B; --card: #1C181A;
+  --mark: #FF6A8A; --note: #2A161D; --noteFg: #FFB3C4; --ok: #7CC57F; --okBg: #16241A;
+  --phoneShell: #000000; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.55; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 64px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(28px, 4.4vw, 44px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+h2 { font-size: 24px; font-weight: 700; letter-spacing: -0.01em; }
+h3 { font-size: 15px; font-weight: 700; }
+p { margin: 0; }
+code, .mono { font-family: var(--mono); font-size: 12.5px; }
+a { color: var(--mark); }
+:focus-visible { outline: 2px solid var(--mark); outline-offset: 2px; }
+
+/* page nav */
+.topnav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 9; background: var(--bg); border-bottom: 1px solid var(--line); }
+.topnav .in { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 10px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.topnav b { font-family: var(--display); font-size: 13px; margin-right: 8px; }
+.topnav a { font-size: 13px; text-decoration: none; color: var(--fg); padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; }
+.topnav a:hover { border-color: var(--mark); color: var(--mark); }
+
+header.intro { padding-block: 40px 28px; display: grid; gap: 14px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.lede { max-width: 68ch; color: var(--muted); font-size: 16px; }
+.pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill { font-size: 12.5px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); }
+.pill.prop { border-color: var(--mark); color: var(--mark); }
+
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.box ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.box .k { font-family: var(--mono); font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+.flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; }
+.flow span { font-size: 13px; padding: 5px 10px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); }
+.flow i { color: var(--muted); font-style: normal; }
+.flow span.slice { font-family: var(--mono); font-size: 11.5px; border-style: dashed; }
+
+section.slice { padding-top: 48px; display: grid; gap: 18px; scroll-margin-top: 64px; }
+.shead { display: grid; gap: 6px; max-width: 80ch; }
+.shead .tag { font-family: var(--mono); font-size: 12px; color: var(--mark); }
+.shead p { color: var(--muted); }
+
+.frames { display: flex; flex-wrap: wrap; gap: 32px 28px; align-items: flex-start; }
+figure.frame { margin: 0; width: 356px; max-width: 100%; display: grid; gap: 12px; }
+figcaption { display: grid; gap: 6px; font-size: 13.5px; }
+figcaption b { font-family: var(--display); font-size: 14px; }
+figcaption .fid { font-family: var(--mono); font-size: 11.5px; color: var(--mark); }
+figcaption p { color: var(--muted); }
+figcaption .data { font-family: var(--mono); font-size: 11.5px; color: var(--fg); background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; overflow-wrap: anywhere; }
+.note { background: var(--note); color: var(--noteFg); border-radius: 10px; padding: 10px 12px; font-size: 13.5px; }
+
+table.t { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+.tw { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+table.t th, table.t td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.t th { font-family: var(--mono); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 500; }
+table.t tr:last-child td { border-bottom: 0; }
+ol.q { margin: 0; padding-left: 22px; display: grid; gap: 10px; max-width: 86ch; }
+ol.q li b { font-family: var(--display); font-size: 14px; }
+
+/* ============ phone + app primitives ============ */
+.phone { width: 356px; max-width: 100%; background: var(--phoneShell); border-radius: 40px; padding: 8px; box-shadow: 0 18px 40px rgba(20,10,15,0.18); }
+.screen { position: relative; height: 728px; border-radius: 33px; overflow: hidden; background: var(--a-screen); color: var(--a-text); font-family: "DM Sans", system-ui, sans-serif; font-size: 13px; line-height: 1.35; display: flex; flex-direction: column; }
+.screen .h { font-family: "Inter", system-ui, sans-serif; }
+.ic { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ic.s { width: 13px; height: 13px; }
+.ic.l { width: 22px; height: 22px; }
+.sbar { display: flex; justify-content: space-between; align-items: center; padding: 10px 22px 4px; font-family: "Inter", sans-serif; font-size: 12px; font-weight: 600; }
+.sbar .r { letter-spacing: 1px; font-size: 10px; }
+.on-pink { color: var(--a-white); }
+
+/* hero */
+.hero { background: var(--a-primary); color: var(--a-white); position: relative; overflow: hidden; padding-bottom: 12px; flex: none; }
+.hero::before, .hero::after { content: ""; position: absolute; border-radius: 999px; background: rgba(255,255,255,0.06); }
+.hero::before { width: 220px; height: 220px; top: -80px; right: -60px; }
+.hero::after { width: 130px; height: 130px; bottom: -40px; left: -40px; }
+.nav { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 8px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.12); }
+.loc { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.tile { width: 32px; height: 32px; border-radius: 10px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); display: grid; place-items: center; flex: none; }
+.d1 { font-family: "Inter", sans-serif; font-size: 15px; font-weight: 500; display: flex; align-items: center; gap: 4px; color: rgba(255,255,255,0.88); }
+.d1 b { font-weight: 800; color: var(--a-white); font-size: 16px; }
+.d2 { font-size: 12px; color: rgba(255,255,255,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.icons { display: flex; gap: 8px; }
+.ib { width: 36px; height: 36px; border-radius: 11px; background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.25); display: grid; place-items: center; }
+.ib.dk { background: rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.2); }
+
+/* D3: Eat Now / Schedule toggle */
+.toggle { position: relative; margin: 12px 16px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 14px; background: rgba(0,0,0,0.16); border: 1px solid rgba(255,255,255,0.2); }
+.seg { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 6px; border-radius: 10px; color: var(--a-white); cursor: pointer; border: 0; background: transparent; font: inherit; }
+.seg .h { font-size: 13.5px; font-weight: 700; }
+.seg small { display: block; font-size: 10.5px; opacity: 0.85; font-weight: 500; font-family: "DM Sans", sans-serif; }
+.seg .txt { text-align: left; line-height: 1.15; }
+.seg.on { background: var(--a-white); color: var(--a-primary); box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
+.seg.on small { color: var(--a-text2); opacity: 1; }
+
+/* eat-now hero bits (simplified cuisine dial) */
+.dial { position: relative; display: flex; gap: 12px; padding: 18px 16px 6px; }
+.cu { display: grid; gap: 6px; justify-items: center; font-size: 11px; color: rgba(255,255,255,0.92); }
+.cu i { width: 56px; height: 56px; border-radius: 999px; border: 2px solid rgba(255,255,255,0.5); }
+
+/* white sheet under hero */
+.body { position: relative; flex: 1; overflow: hidden; background: var(--a-card); }
+.pad { padding: 12px 16px; display: grid; gap: 12px; }
+.row { display: flex; align-items: center; gap: 8px; }
+.sp { justify-content: space-between; }
+.secT { font-family: "Inter", sans-serif; font-size: 16px; font-weight: 600; }
+.mutedT { color: var(--a-text2); font-size: 12px; }
+.chips { display: flex; gap: 8px; padding: 10px 16px 4px; overflow: hidden; }
+.chip { flex: none; padding: 6px 12px; border-radius: 20px; border: 1px solid var(--a-border); font-size: 12px; font-weight: 600; font-family: "Inter", sans-serif; }
+.chip.on { border-color: var(--a-primary); background: var(--a-primaryLight); color: var(--a-primary); }
+
+/* food photo placeholders */
+.ph { background: linear-gradient(135deg, #E9A23B, #B5541C); }
+.ph.p2 { background: linear-gradient(135deg, #F2C14E, #D9822B); }
+.ph.p3 { background: linear-gradient(135deg, #8DB255, #4F7A28); }
+.ph.p4 { background: linear-gradient(135deg, #D8644B, #8E2C1F); }
+.ph.p5 { background: linear-gradient(135deg, #C9B89A, #7E6A4D); }
+.rcard { border-radius: 16px; overflow: hidden; border: 1px solid var(--a-divider); }
+.rcard .ph { height: 132px; }
+.rcard .in { padding: 10px 12px; display: grid; gap: 2px; }
+
+/* SIGNATURE: slot tickets with a draining last-call bar */
+.slots { display: flex; gap: 8px; padding: 12px 16px 10px; overflow: hidden; background: var(--a-card); border-bottom: 1px solid var(--a-divider); flex: none; }
+.slot { flex: none; width: 98px; border-radius: 12px; border: 1.5px solid var(--a-border); background: var(--a-card); padding: 8px 10px 9px; display: grid; gap: 1px; position: relative; }
+.slot .tm { font-family: "Inter", sans-serif; font-size: 17px; font-weight: 800; letter-spacing: -0.01em; }
+.slot .tm small { font-size: 11px; font-weight: 600; margin-left: 2px; color: var(--a-text2); }
+.slot .tm::before { content: "Delivery"; display: block; font-family: "DM Sans", sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--a-muted); margin-bottom: 1px; }
+.slot.off .tm::before { color: var(--a-disabled); }
+.slot .lc { font-size: 11px; color: var(--a-text2); }
+.slot .left { font-size: 11px; font-weight: 700; color: var(--a-veg); }
+.slot .bar { height: 3px; border-radius: 3px; background: var(--a-divider); margin-top: 6px; overflow: hidden; }
+.slot .bar > i { display: block; height: 100%; background: var(--a-veg); border-radius: 3px; }
+.slot.on { border-color: var(--a-primary); background: var(--a-primaryLight); }
+.slot.warn .left { color: var(--a-warnText); }
+.slot.warn .bar > i { background: var(--a-amber); }
+.slot.off { background: var(--a-section); border-color: var(--a-section); color: var(--a-disabled); }
+.slot.off .tm, .slot.off .tm small, .slot.off .lc { color: var(--a-disabled); }
+.slot.off .left { color: var(--a-hint); font-weight: 500; }
+
+.areaRow { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: var(--a-section); font-size: 12px; color: var(--a-text2); flex: none; }
+.areaRow b { color: var(--a-text); font-family: "Inter", sans-serif; font-weight: 600; }
+
+/* restaurant + dish rows on the Schedule menu */
+.rest { border-bottom: 8px solid var(--a-section); padding: 12px 16px 6px; display: grid; gap: 4px; }
+.rhead { display: flex; gap: 10px; align-items: center; margin-bottom: 4px; }
+.rimg { width: 40px; height: 40px; border-radius: 10px; flex: none; }
+.rname { font-family: "Inter", sans-serif; font-size: 15px; font-weight: 700; }
+.rmeta { font-size: 11.5px; color: var(--a-muted); }
+.dish { display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid var(--a-divider); }
+.dish .dl { flex: 1; min-width: 0; display: grid; gap: 3px; align-content: start; }
+.dn { font-family: "Inter", sans-serif; font-size: 13.5px; font-weight: 600; }
+.dp { font-family: "Inter", sans-serif; font-size: 13px; font-weight: 700; }
+.dp s { color: var(--a-hint); font-weight: 500; margin-left: 4px; font-size: 11.5px; }
+.dp em { font-style: normal; color: var(--a-discount); font-size: 10.5px; font-weight: 700; margin-left: 4px; text-transform: uppercase; }
+.dc { font-size: 11px; color: var(--a-muted); }
+.dr { position: relative; width: 92px; flex: none; }
+.dimg { width: 92px; height: 80px; border-radius: 12px; }
+.add { position: absolute; left: 8px; right: 8px; bottom: -10px; height: 30px; border-radius: 8px; background: var(--a-white); border: 1.5px solid var(--a-primary); color: var(--a-primary); font-family: "Inter", sans-serif; font-weight: 700; font-size: 12.5px; display: flex; align-items: center; justify-content: center; gap: 3px; box-shadow: 0 2px 4px rgba(255,45,91,0.12); }
+.step { position: absolute; left: 8px; right: 8px; bottom: -10px; height: 30px; border-radius: 8px; background: var(--a-primary); color: var(--a-white); font-family: "Inter", sans-serif; font-weight: 800; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; }
+.veg { width: 12px; height: 12px; border: 1.5px solid var(--a-veg); border-radius: 2px; display: grid; place-items: center; }
+.veg::after { content: ""; width: 6px; height: 6px; border-radius: 3px; background: var(--a-veg); }
+.veg.nv { border-color: var(--a-nonveg); }
+.veg.nv::after { background: var(--a-nonveg); }
+.dish.na .dn, .dish.na .dp, .dish.na .dc { color: var(--a-disabled); }
+.dish.na .dimg { filter: grayscale(1); opacity: 0.45; }
+.reason { justify-self: start; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: var(--a-section); color: var(--a-text2); }
+.reason.amb { background: var(--a-amberLight); color: var(--a-warnText); }
+.rest.closed .rname, .rest.closed .rmeta { color: var(--a-disabled); }
+.rest.closed .rimg { filter: grayscale(1); opacity: 0.5; }
+
+/* cart bar (Schedule variant) */
+.cbar { position: absolute; left: 12px; right: 12px; bottom: 74px; display: flex; gap: 8px; z-index: 3; }
+.cbar .l { flex: 1; min-width: 0; background: var(--a-dark); color: var(--a-white); border-radius: 12px; padding: 7px 11px; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+.cbar .l .c { width: 34px; height: 34px; border-radius: 17px; background: rgba(255,255,255,0.08); display: grid; place-items: center; flex: none; }
+.cbar .l b { font-family: "Inter", sans-serif; font-size: 12px; font-weight: 600; display: block; }
+.cbar .l small { font-size: 10px; opacity: 0.7; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cbar .r { background: var(--a-primary); color: var(--a-white); border-radius: 12px; padding: 7px 12px; display: flex; align-items: center; gap: 8px; min-width: 104px; box-shadow: 0 4px 10px rgba(255,45,91,0.3); }
+.cbar .r b { font-family: "Inter", sans-serif; font-size: 12px; display: block; }
+.cbar .r small { font-size: 10px; font-weight: 600; display: block; }
+.cbar .thumb { width: 32px; height: 32px; border-radius: 8px; flex: none; }
+
+/* tab bar */
+.tabs { flex: none; height: 64px; display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--a-divider); background: var(--a-white); z-index: 4; position: relative; }
+.tabs span { display: grid; justify-items: center; align-content: center; gap: 3px; font-size: 10.5px; color: var(--a-hint); font-family: "Inter", sans-serif; font-weight: 600; }
+.tabs span.on { color: var(--a-primary); }
+
+/* sub-screen header */
+.ahdr { flex: none; display: flex; align-items: center; gap: 14px; padding: 8px 16px 12px; background: var(--a-white); border-bottom: 1px solid var(--a-divider); }
+.ahdr b { font-family: "Inter", sans-serif; font-size: 15px; font-weight: 600; display: block; }
+.ahdr small { font-size: 11.5px; color: var(--a-text2); }
+.scroll { flex: 1; overflow: hidden; padding: 12px; display: grid; gap: 10px; align-content: start; background: var(--a-screen); }
+.card { background: var(--a-card); border-radius: 16px; padding: 14px; display: grid; gap: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.ctitle { font-family: "Inter", sans-serif; font-size: 14px; font-weight: 700; }
+.line { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+.line .nm { flex: 1; min-width: 0; font-size: 12.5px; }
+.line .nm small { display: block; color: var(--a-muted); font-size: 11px; }
+.line .v { font-family: "Inter", sans-serif; font-weight: 600; font-size: 12.5px; white-space: nowrap; }
+.qty { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--a-primary); color: var(--a-primary); border-radius: 8px; padding: 2px 6px; font-family: "Inter", sans-serif; font-weight: 700; font-size: 12px; }
+.bill .line { font-size: 12px; color: var(--a-text2); }
+.bill .line .v { color: var(--a-text); font-size: 12px; }
+.div { height: 1px; background: var(--a-divider); }
+.tot { display: flex; justify-content: space-between; align-items: baseline; }
+.tot b { font-family: "Inter", sans-serif; font-size: 14px; }
+.tot .v { font-family: "Inter", sans-serif; font-size: 15px; font-weight: 800; color: var(--a-primary); }
+.ticket { display: flex; align-items: center; gap: 12px; background: var(--a-primaryLight); border: 1.5px dashed var(--a-primary); border-radius: 14px; padding: 10px 12px; }
+.ticket .big { font-family: "Inter", sans-serif; font-size: 20px; font-weight: 800; color: var(--a-primary); line-height: 1; }
+.ticket .big small { font-size: 11px; }
+.ticket .meta { font-size: 11.5px; color: var(--a-text2); }
+.ticket .meta b { color: var(--a-text); font-family: "Inter", sans-serif; }
+
+.banner { display: flex; gap: 10px; align-items: flex-start; border-radius: 12px; padding: 10px 12px; font-size: 12px; }
+.banner b { font-family: "Inter", sans-serif; display: block; font-size: 12.5px; margin-bottom: 1px; }
+.banner.amb { background: var(--a-amberLight); color: var(--a-warnText); }
+.banner.err { background: var(--a-errorLight); color: var(--a-error); }
+.banner.info { background: var(--a-section); color: var(--a-text2); }
+.banner.ok { background: var(--a-vegLight); color: var(--a-veg); }
+
+.paybar { flex: none; display: flex; align-items: center; gap: 12px; padding: 12px 16px 18px; background: var(--a-white); border-top: 1px solid var(--a-divider); z-index: 4; position: relative; }
+.paybar .amt { display: grid; }
+.paybar .amt b { font-family: "Inter", sans-serif; font-size: 16px; font-weight: 800; }
+.paybar .amt small { font-size: 10.5px; color: var(--a-muted); letter-spacing: 0.04em; text-transform: uppercase; }
+.btn { flex: 1; height: 46px; border-radius: 12px; border: 0; background: var(--a-primary); color: var(--a-white); font-family: "Inter", sans-serif; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.btn.dis { background: var(--a-disabled); }
+.btn.ghost { background: var(--a-white); color: var(--a-text); border: 1px solid var(--a-border); }
+.btn.dng { background: var(--a-white); color: var(--a-error); border: 1.5px solid var(--a-error); }
+.btn.sm { height: 34px; font-size: 12.5px; border-radius: 9px; flex: none; padding: 0 14px; }
+.link { color: var(--a-primary); font-family: "Inter", sans-serif; font-weight: 700; font-size: 12px; }
+
+/* overlays */
+.scrim { position: absolute; inset: 0; background: var(--a-scrim); z-index: 6; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--a-white); border-radius: 22px 22px 0 0; z-index: 7; padding: 10px 16px 18px; display: grid; gap: 12px; }
+.sheet .grab { width: 40px; height: 4px; border-radius: 2px; background: var(--a-border); justify-self: center; }
+.dialog { position: absolute; left: 24px; right: 24px; top: 50%; transform: translateY(-50%); background: var(--a-white); border-radius: 18px; padding: 20px 18px 16px; z-index: 7; display: grid; gap: 10px; }
+.dialog .ttl { font-family: "Inter", sans-serif; font-size: 16px; font-weight: 700; }
+.dialog p { font-size: 13px; color: var(--a-text2); }
+.dialog .acts { display: flex; gap: 8px; margin-top: 6px; }
+.icoBadge { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--a-primaryLight); color: var(--a-primary); }
+.icoBadge.amb { background: var(--a-amberLight); color: var(--a-warnText); }
+.icoBadge.err { background: var(--a-errorLight); color: var(--a-error); }
+.opt { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--a-divider); font-size: 12.5px; }
+.opt .v { margin-left: auto; font-family: "Inter", sans-serif; font-weight: 600; font-size: 12px; color: var(--a-text2); }
+.radio { width: 16px; height: 16px; border-radius: 8px; border: 1.5px solid var(--a-border); flex: none; }
+.radio.on { border: 5px solid var(--a-primary); }
+.cb { width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--a-border); flex: none; }
+.cb.on { background: var(--a-primary); border-color: var(--a-primary); }
+
+/* empty / state screens */
+.state { flex: 1; display: grid; align-content: center; justify-items: center; gap: 10px; padding: 24px 28px; text-align: center; background: var(--a-card); }
+.state .big { width: 72px; height: 72px; border-radius: 22px; display: grid; place-items: center; background: var(--a-primaryLight); color: var(--a-primary); margin-bottom: 6px; }
+.state .ttl { font-family: "Inter", sans-serif; font-size: 17px; font-weight: 700; }
+.state p { color: var(--a-text2); font-size: 13px; max-width: 30ch; }
+.state .btn { flex: none; width: 100%; margin-top: 8px; }
+
+/* intro (shown once) */
+.introScr { flex: 1; background: var(--a-primary); color: var(--a-white); position: relative; overflow: hidden; display: flex; flex-direction: column; }
+.introScr .art { position: relative; margin: 18px 20px 0; height: 270px; border-radius: 24px; background: rgba(0,0,0,0.14); border: 1px solid rgba(255,255,255,0.16); display: grid; place-items: center; }
+.introScr .tix { display: grid; gap: 10px; transform: rotate(-4deg); }
+.introScr .tix .slot { width: 190px; }
+.introScr .tx { padding: 22px 24px 0; display: grid; gap: 10px; }
+.introScr .tx .h { font-size: 25px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; }
+.introScr ul { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 9px; font-size: 13.5px; }
+.introScr li { display: flex; gap: 10px; align-items: flex-start; }
+.introScr li .tile { width: 26px; height: 26px; border-radius: 8px; }
+.introScr .ft { margin-top: auto; padding: 16px 20px 22px; display: grid; gap: 8px; }
+.introScr .btn { background: var(--a-white); color: var(--a-primary); flex: none; }
+.introScr .skip { text-align: center; font-size: 13px; opacity: 0.9; font-family: "Inter", sans-serif; font-weight: 600; }
+
+/* razorpay placeholder */
+.vendor { flex: 1; background: #F3F5F9; display: grid; align-content: start; }
+.vendor .vh { background: #0C2651; color: #FFFFFF; padding: 16px; display: grid; gap: 4px; }
+.vendor .vh b { font-family: "Inter", sans-serif; font-size: 15px; }
+.vendor .vb { padding: 16px; display: grid; gap: 10px; }
+.vendor .vrow { background: #FFFFFF; border-radius: 10px; padding: 12px; font-size: 12.5px; color: #2B3A55; display: flex; justify-content: space-between; border: 1px solid #E1E6EF; }
+.ribbon { position: absolute; top: 120px; left: -40px; right: -40px; transform: rotate(-12deg); background: rgba(31,34,48,0.88); color: #FFFFFF; text-align: center; font-family: "IBM Plex Mono", monospace; font-size: 11px; padding: 6px; z-index: 5; letter-spacing: 0.04em; }
+
+/* E3 confirming component */
+.confirm { display: grid; justify-items: center; gap: 10px; text-align: center; padding: 22px 16px; }
+.ring { width: 64px; height: 64px; border-radius: 50%; border: 5px solid var(--a-primaryLight); border-top-color: var(--a-primary); animation: spin 1.1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ring { animation: none; } }
+.confirm .ttl { font-family: "Inter", sans-serif; font-size: 16px; font-weight: 700; }
+.confirm p { font-size: 12.5px; color: var(--a-text2); max-width: 30ch; }
+
+.statusDot { width: 7px; height: 7px; border-radius: 4px; display: inline-block; }
+.st { display: inline-flex; align-items: center; gap: 6px; font-family: "Inter", sans-serif; font-weight: 600; font-size: 12px; }
+
+/* interactive toggle on F1 */
+.screen[data-mode="eat"] .only-sch { display: none; }
+.screen[data-mode="sch"] .only-eat { display: none; }
+
+/* Review refinements (selected from an external review) */
+button { font: inherit; }
+.topnav .in { flex-wrap: nowrap; overflow-x: auto; min-height: 62px; }
+.topnav b, .topnav a, .theme-toggle { flex-shrink: 0; }
+.topnav a { min-height: 38px; display: inline-flex; align-items: center; }
+.theme-toggle { margin-left: auto; padding: 8px 12px; color: var(--fg); background: var(--card); border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
+.prototype-note { font-size: 12.5px; color: var(--muted); max-width: 80ch; }
+section.slice, figure.frame { scroll-margin-top: 84px; }
+.screen { --a-muted: #666666; --a-hint: #666666; }
+.body, .scroll { min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; }
+.body:has(~ .cbar) { padding-bottom: 88px; }
+.scroll { gap: 12px; padding-bottom: 24px; }
+.screen, .screen * { scrollbar-width: none; -ms-overflow-style: none; }
+.screen::-webkit-scrollbar, .screen *::-webkit-scrollbar { display: none; width: 0; height: 0; }
+.nav { gap: 10px; }
+.loc { flex: 1; }
+.loc > div { min-width: 0; }
+.icons { flex-shrink: 0; gap: 6px; }
+.d1 { white-space: nowrap; font-size: 13px; gap: 3px; }
+.d1 b { font-size: 15px; }
+.d2 { font-size: 11px; }
+.ib { width: 32px; height: 36px; }
+.seg { min-height: 44px; }
+.slots { overflow-x: auto; padding: 14px 14px 12px; }
+.slot { width: 112px; padding: 10px 9px; gap: 4px; text-align: left; color: var(--a-text); font: inherit; }
+.slot .tm::before { content: "Delivery around"; text-transform: none; letter-spacing: 0; font-size: 10.5px; font-weight: 500; }
+.slot .lc, .slot .left { font-size: 10.5px; white-space: nowrap; }
+.slot.off { border-color: var(--a-border); }
+.selected-mark { position: absolute; right: 7px; top: 8px; color: var(--a-primary); font-size: 12px; font-weight: 800; }
+button.slot { cursor: pointer; }
+button.slot:disabled { cursor: default; }
+.dp em { color: var(--a-veg); }
+.dish { padding: 14px 0 20px; }
+.dn { line-height: 1.5; }
+.dish.na .dn, .dish.na .dp, .dish.na .dc, .rest.closed .rname, .rest.closed .rmeta { color: var(--a-text2); }
+.reason { padding: 4px 7px; line-height: 1.4; }
+.btn { min-height: 46px; height: auto; padding: 10px 12px; text-align: center; line-height: 1.35; }
+.btn.dis { background: #E8E8E8; color: #666666; }
+.btn.sm { min-height: 40px; }
+.sheet { max-height: 90%; overflow-y: auto; }
+.sheet > .row:has(> .btn) { align-items: stretch; }
+.paybar { gap: 10px; padding: 12px 14px 18px; box-shadow: 0 -4px 14px rgba(20,10,15,.035); }
+.paybar .btn { font-size: 13px; }
+.ticket { flex-wrap: wrap; }
+.ticket .big { white-space: nowrap; }
+.card .row.sp { flex-wrap: wrap; align-items: flex-start; gap: 7px; }
+.st { line-height: 1.4; }
+.cbar .l { padding: 10px; }
+.cbar .l .c { display: none; }
+.cbar .l b { font-size: 11px; }
+.cbar .r { justify-content: space-between; min-width: 124px; }
+.cbar .r small { margin-top: 3px; }
+.introScr { overflow-y: auto; }
+.introScr .art { min-height: 220px; height: 240px; }
+.introScr .skip { min-height: 36px; display: grid; place-items: center; }
+@media (max-width: 760px) { .grid2 { grid-template-columns: minmax(0, 1fr); } .frames { justify-content: center; } }
+@media (max-width: 380px) { .phone { padding: 6px; border-radius: 32px; } .screen { border-radius: 26px; } .nav { padding-inline: 12px; } .tile { display: none; } .dialog { left: 16px; right: 16px; } }
+.slotHead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 12px 16px 0; background: var(--a-card); flex: none; }
+.slotHead b { font-family: "Inter", sans-serif; font-size: 14px; font-weight: 700; }
+.slotHead + .slots { padding-top: 8px; }
+.linkBtn { background: none; border: 0; padding: 6px 0; color: var(--a-primary); font-family: "Inter", sans-serif; font-weight: 700; font-size: 12px; cursor: pointer; }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-chevr" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.5-7-12a7 7 0 0114 0c0 5.5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3l10 18H2L12 3z"/><path d="M12 10v4M12 17.5v.5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-bag" viewBox="0 0 24 24"><path d="M6 7h12l1 14H5L6 7z"/><path d="M9 7a3 3 0 016 0"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v10H3z"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+  <symbol id="i-ride" viewBox="0 0 24 24"><circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M9 17h6l-3-7h4M5 10h4"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 11-3-6.7L21 8"/><path d="M21 3v5h-5"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></symbol>
+  <symbol id="i-store" viewBox="0 0 24 24"><path d="M3 9l2-5h14l2 5M4 9v11h16V9M3 9h18M9 20v-6h6v6"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+</svg>
+
+<nav class="topnav" aria-label="Sections">
+  <div class="in">
+    <b>Schedule app design</b>
+    <a href="#decisions">Decisions</a>
+    <a href="#s41">4.1 Area</a>
+    <a href="#s42">4.2 Menu</a>
+    <a href="#s43">4.3 Checkout</a>
+    <a href="#s44">4.4 Cancel</a>
+    <a href="#review">Review questions</a>
+    <button class="theme-toggle" type="button" aria-label="Switch review page theme">Theme: auto</button>
+  </div>
+</nav>
+
+<div class="wrap">
+
+<header class="intro">
+  <div class="eyebrow">Ninjasu · customer app · Schedule Phase 4 · proposed 2026-11-15</div>
+  <h1>Schedule lunch in the customer app</h1>
+  <p class="lede">Every screen and state the Phase 4 slices (4.1 to 4.4) add to Food-Ninja-Frontend, drawn with the app's own tokens: the pink hero band, Inter headings over DM Sans body, white 16px cards, the dark CartBar pill and the outlined ADD button. This page is for review before any UI code is written. Prices, fees and names are example values; every amount shown comes from a server field, named under each screen.</p>
+  <div class="pills">
+    <span class="pill prop">Status: proposed design</span>
+    <span class="pill">Plan: 07-Roadmap/schedule-phase4-customer-app-plan.md §3</span>
+    <span class="pill">Lanes: lanes-schedule-p3-p4.md, Lane 2</span>
+    <span class="pill">Phone frames: 340pt wide, light only (the app has no dark mode)</span>
+  </div>
+  <p class="prototype-note">Prototype: the Eat Now / Schedule switch and the delivery-time tickets in F1 are interactive. Scroll inside a phone to see the rest of a screen. Food images are placeholders.</p>
+</header>
+
+<section id="decisions" class="slice" style="padding-top:8px">
+  <div class="shead"><span class="tag">Decisions this design takes</span><h2>What is fixed before the screens</h2></div>
+  <div class="grid2">
+    <div class="box">
+      <span class="k">D3 · switch placement (recommended option)</span>
+      <h3>Eat Now / Schedule toggle in the Home hero</h3>
+      <p>A two-segment toggle sits directly under the location row, inside the pink band. It appears only when the context says <code>area.scheduleEnabled</code>. Schedule mode keeps the Home tab and the bottom bar, swaps the cuisine dial for the slot strip, and the location row reads "Lunch · Today".</p>
+    </div>
+    <div class="box">
+      <span class="k">D3 · intro screen (recommended option)</span>
+      <h3>HSR intro shown once</h3>
+      <p>The first tap on Schedule opens a full-screen intro that explains how it works: choose a delivery time, order before the time shown, get one delivery for the whole order. Seen-flag lives in <code>usePreferencesStore</code>. "Not now" also marks it seen and returns to Eat Now. A "How it works" link above the delivery times opens the same screen again at any time.</p>
+    </div>
+    <div class="box">
+      <span class="k">Signature element</span>
+      <h3>Delivery time first, ordering deadline second</h3>
+      <p>Each ticket shows the approximate delivery time, an explicit "Order by" time and a text countdown that turns amber near closing. The selected ticket has a tick as well as a pink border. There is no progress bar, because the server sends no window or stock level to draw one from. Availability always comes from the server.</p>
+    </div>
+    <div class="box">
+      <span class="k">Rules carried from the plan</span>
+      <ul>
+        <li>The app never decides availability or price. Greying uses the server's <code>slot.orderable</code> and dish <code>reason</code>.</li>
+        <li>The countdown is display only; at <code>lastCallAtMs</code> (skew-corrected by <code>serverNowMs</code>) the app re-reads context.</li>
+        <li>Errors branch on <code>data.error</code>, never the HTTP status.</li>
+        <li>Every cart call sends <code>type=FOOD&amp;fulfilment=SCHEDULE</code>; the Eat Now cart is never touched.</li>
+        <li>The app never says how many or which restaurants can go in one order. The server decides; the app only shows its refusal (F11).</li>
+        <li>Customer text avoids internal words: "delivery time", not "slot"; "ordering closed", not "last call".</li>
+      </ul>
+    </div>
+    <div class="box">
+      <span class="k">Kept as is</span>
+      <ul>
+        <li>Brand tokens, fonts, hero band, tab bar, ADD button, CartBar shape.</li>
+        <li>The existing customize sheet, login prompt and ConfirmDialog patterns.</li>
+        <li>The existing Schedule group screen (My Orders); 4.4 adds to it rather than replacing it.</li>
+      </ul>
+    </div>
+    <div class="box">
+      <span class="k">Out of scope here</span>
+      <ul>
+        <li>Advance days above 0 (day picker): today is same-day only.</li>
+        <li>Group push notifications (2d.2) and picked-up / delivered stages (3.3).</li>
+        <li>COD for Schedule, and the web app.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="box" style="margin-top:4px">
+    <span class="k">Customer path</span>
+    <div class="flow">
+      <span>Home</span><i>→</i><span>Tap Schedule</span><i>→</i><span>Intro (once)</span><i>→</i><span>Pick slot</span><i>→</i><span>ADD</span><i>→</i><span>Customize</span><i>→</i><span>Schedule cart</span><i>→</i><span>Pay</span><i>→</i><span>Razorpay</span><i>→</i><span>Verify / confirming</span><i>→</i><span>Group screen</span><i>→</i><span>Cancel (optional)</span>
+    </div>
+    <div class="flow">
+      <span class="slice">4.1 = Home toggle, intro, area states</span>
+      <span class="slice">4.2 = slots, menu, add, 409 dialogs</span>
+      <span class="slice">4.3 = cart, checkout, payment states</span>
+      <span class="slice">4.4 = cancel on the group screen</span>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 4.1 ======================= -->
+<section id="s41" class="slice">
+  <div class="shead">
+    <span class="tag">Slice 4.1 · feature/schedule-4.1-area-bootstrap</span>
+    <h2>Area bootstrap: the toggle, the intro, and the four "can't order" states</h2>
+    <p><code>useScheduleContext(lat, lng)</code> reads <code>GET /api/schedule/context</code> from the saved location. Guests can browse; the login gate comes at ADD.</p>
+  </div>
+  <div class="frames">
+
+    <!-- F1 interactive -->
+    <figure class="frame" id="frame-f1">
+      <div class="phone"><div class="screen" id="f1" data-mode="eat">
+        <div class="hero">
+          <div class="sbar on-pink"><span>11:22</span><span class="r">5G ▮▮▮</span></div>
+          <div class="nav">
+            <div class="loc">
+              <span class="tile"><svg class="ic s only-eat"><use href="#i-zap"/></svg><svg class="ic s only-sch"><use href="#i-cal"/></svg></span>
+              <div style="min-width:0">
+                <div class="d1 only-eat">Delivery in <b>15 mins</b><svg class="ic s"><use href="#i-chev"/></svg></div>
+                <div class="d1 only-sch">Lunch · <b>Today</b><svg class="ic s"><use href="#i-chev"/></svg></div>
+                <div class="d2">HSR Layout, Sector 2, 27th Main</div>
+              </div>
+            </div>
+            <div class="icons"><span class="ib"><svg class="ic"><use href="#i-search"/></svg></span><span class="ib dk"><svg class="ic"><use href="#i-user"/></svg></span></div>
+          </div>
+          <div class="toggle" role="tablist" aria-label="Order mode">
+            <button class="seg on" data-set="eat" role="tab" aria-selected="true"><svg class="ic"><use href="#i-zap"/></svg><span class="txt"><span class="h">Eat Now</span><small>15 min delivery</small></span></button>
+            <button class="seg" data-set="sch" role="tab" aria-selected="false"><svg class="ic"><use href="#i-cal"/></svg><span class="txt"><span class="h">Schedule</span><small>Lunch, order ahead</small></span></button>
+          </div>
+          <div class="dial only-eat">
+            <span class="cu"><i class="ph"></i>Biryani</span><span class="cu"><i class="ph p3"></i>Meals</span><span class="cu"><i class="ph p2"></i>Dosa</span><span class="cu"><i class="ph p4"></i>Chinese</span>
+          </div>
+        </div>
+        <div class="slotHead only-sch"><b>When should we deliver?</b><button class="linkBtn" type="button">How it works</button></div>
+          <div class="slots only-sch" role="group" aria-label="Example delivery times">
+          <button class="slot off" type="button" disabled aria-pressed="false"><span class="tm">12:00<small>PM</small></span><span class="lc">Order by 11:00 AM</span><span class="left">Ordering closed</span></button>
+          <button class="slot on warn" type="button" data-time="12:30 PM" aria-pressed="true"><span class="selected-mark" aria-hidden="true">✓</span><span class="tm">12:30<small>PM</small></span><span class="lc">Order by 11:30 AM</span><span class="left">8 min left</span></button>
+          <button class="slot" type="button" data-time="1:00 PM" aria-pressed="false"><span class="tm">1:00<small>PM</small></span><span class="lc">Order by 12:00 PM</span><span class="left">38 min left</span></button>
+        </div>
+        <div class="body" tabindex="0" aria-label="Scrollable app preview">
+          <div class="only-eat">
+            <div class="chips"><span class="chip on">All</span><span class="chip">Veg</span><span class="chip">Fast delivery</span><span class="chip">Offers</span></div>
+            <div class="pad">
+              <div class="row sp"><span class="secT">Top restaurants to explore</span><span class="chip">Filter &amp; Sort</span></div>
+              <div class="rcard"><div class="ph p4"></div><div class="in"><span class="rname">Tandoor Lane</span><span class="rmeta">North Indian · 25 min · Starts at ₹149</span></div></div>
+            </div>
+          </div>
+          <div class="only-sch">
+            <div class="areaRow"><span>Delivering to <b>HSR Layout</b> around <b>12:30 PM</b></span><span class="link">Change</span></div>
+            <div class="rest" style="border-bottom:0">
+              <div class="rhead"><div class="rimg ph p4"></div><div><div class="rname">Tandoor Lane</div><div class="rmeta">North Indian · 4 dishes for lunch</div></div></div>
+              <div class="dish"><div class="dl"><span class="veg"></span><span class="dn">Paneer butter masala bowl</span><span class="dp">₹189<s>₹219</s><em>14% off</em></span></div><div class="dr"><div class="dimg ph p2"></div><span class="add">ADD<svg class="ic s"><use href="#i-plus"/></svg></span></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="tabs"><span class="on"><svg class="ic l"><use href="#i-home"/></svg>Home</span><span><svg class="ic l"><use href="#i-search"/></svg>Search</span><span><svg class="ic l"><use href="#i-list"/></svg>Orders</span><span><svg class="ic l"><use href="#i-user"/></svg>Profile</span></div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F1 · interactive</span>
+        <b>Home with the mode toggle</b>
+        <p>Tap the toggle to switch. Eat Now keeps today's Home exactly. Schedule hides the cuisine dial, changes the location row to "Lunch · Today", and pins the delivery times under the hero, headed "When should we deliver?" with a "How it works" link. The toggle is hidden when the area has no Schedule.</p>
+        <span class="data">area.scheduleEnabled · slots[] · lastCallAtMs · serverNowMs</span>
+      </figcaption>
+    </figure>
+
+    <!-- F2 intro -->
+    <figure class="frame" id="f2">
+      <div class="phone"><div class="screen">
+        <div class="introScr">
+          <div class="sbar on-pink"><span>11:22</span><span class="r">5G ▮▮▮</span></div>
+          <div class="art">
+            <div class="tix">
+              <div class="slot on"><span class="selected-mark" aria-hidden="true">✓</span><span class="tm">12:30<small>PM</small></span><span class="lc">Order by 11:30 AM</span><span class="left">Lunch at your desk</span></div>
+              <div class="slot" style="margin-left:34px"><span class="tm">1:00<small>PM</small></span><span class="lc">Order by 12:00 PM</span><span class="left">38 min left</span></div>
+            </div>
+          </div>
+          <div class="tx">
+            <span class="h">Lunch, scheduled.<br>Now in HSR Layout.</span>
+            <ul>
+              <li><span class="tile"><svg class="ic s"><use href="#i-clock"/></svg></span><span>Choose when you want lunch delivered.</span></li>
+              <li><span class="tile"><svg class="ic s"><use href="#i-store"/></svg></span><span>Order before the time shown under each delivery time.</span></li>
+              <li><span class="tile"><svg class="ic s"><use href="#i-ride"/></svg></span><span>Everything arrives together in one delivery.</span></li>
+            </ul>
+          </div>
+          <div class="ft">
+            <span class="btn">Show lunch menu</span>
+            <span class="skip">Not now</span>
+          </div>
+        </div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F2 · shown once</span>
+        <b>HSR intro</b>
+        <p>Opens on the first Schedule tap. The same screen opens again from "How it works" above the delivery times (F1, F7); opened that way it has one button, "Got it", and returns to the menu. The area name comes from the context, so the copy holds for the next area. It promises nothing about cancelling or how many restaurants can be combined, because the server sets both rules and they can change.</p>
+        <span class="data">area.name · usePreferencesStore.scheduleIntroSeen (set on first view; "How it works" ignores it)</span>
+      </figcaption>
+    </figure>
+
+    <!-- F3 not open yet -->
+    <figure class="frame" id="f3">
+      <div class="phone"><div class="screen">
+        <div class="hero">
+          <div class="sbar on-pink"><span>6:40</span><span class="r">5G ▮▮▮</span></div>
+          <div class="nav"><div class="loc"><span class="tile"><svg class="ic s"><use href="#i-cal"/></svg></span><div><div class="d1">Lunch · <b>Today</b><svg class="ic s"><use href="#i-chev"/></svg></div><div class="d2">HSR Layout, Sector 2</div></div></div><div class="icons"><span class="ib"><svg class="ic"><use href="#i-search"/></svg></span></div></div>
+          <div class="toggle"><span class="seg"><svg class="ic"><use href="#i-zap"/></svg><span class="txt"><span class="h">Eat Now</span></span></span><span class="seg on"><svg class="ic"><use href="#i-cal"/></svg><span class="txt"><span class="h">Schedule</span></span></span></div>
+        </div>
+        <div class="state">
+          <div class="big"><svg class="ic l"><use href="#i-sun"/></svg></div>
+          <span class="ttl">Lunch orders open at 7:00 AM</span>
+          <p>Come back in 20 minutes to pick a slot. Restaurants publish today's lunch menu by then.</p>
+          <span class="btn ghost">Order now instead</span>
+        </div>
+        <div class="tabs"><span class="on"><svg class="ic l"><use href="#i-home"/></svg>Home</span><span><svg class="ic l"><use href="#i-search"/></svg>Search</span><span><svg class="ic l"><use href="#i-list"/></svg>Orders</span><span><svg class="ic l"><use href="#i-user"/></svg>Profile</span></div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F3 · state</span>
+        <b>Not open yet</b>
+        <p>Shown when <code>windowOpensAtMs</code> is in the future. The time is formatted from the server value; the minutes-to-go line re-renders each minute. "Order now instead" flips the toggle to Eat Now.</p>
+        <span class="data">windowOpensAtMs · serverNowMs</span>
+      </figcaption>
+    </figure>
+
+    <!-- F4 paused -->
+    <figure class="frame" id="f4">
+      <div class="phone"><div class="screen">
+        <div class="hero">
+          <div class="sbar on-pink"><span>10:05</span><span class="r">5G ▮▮▮</span></div>
+          <div class="nav"><div class="loc"><span class="tile"><svg class="ic s"><use href="#i-cal"/></svg></span><div><div class="d1">Lunch · <b>Today</b><svg class="ic s"><use href="#i-chev"/></svg></div><div class="d2">HSR Layout, Sector 2</div></div></div><div class="icons"><span class="ib"><svg class="ic"><use href="#i-search"/></svg></span></div></div>
+          <div class="toggle"><span class="seg"><svg class="ic"><use href="#i-zap"/></svg><span class="txt"><span class="h">Eat Now</span></span></span><span class="seg on"><svg class="ic"><use href="#i-cal"/></svg><span class="txt"><span class="h">Schedule</span></span></span></div>
+        </div>
+        <div class="state">
+          <div class="big" style="background:var(--a-amberLight);color:var(--a-warnText)"><svg class="ic l"><use href="#i-pause"/></svg></div>
+          <span class="ttl">Lunch orders are paused</span>
+          <p>We've stopped taking new lunch orders in HSR Layout for now. Orders you've already placed are not affected.</p>
+          <span class="btn ghost"><svg class="ic s"><use href="#i-refresh"/></svg>Check again</span>
+        </div>
+        <div class="tabs"><span class="on"><svg class="ic l"><use href="#i-home"/></svg>Home</span><span><svg class="ic l"><use href="#i-search"/></svg>Search</span><span><svg class="ic l"><use href="#i-list"/></svg>Orders</span><span><svg class="ic l"><use href="#i-user"/></svg>Profile</span></div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F4 · state</span>
+        <b>Area paused</b>
+        <p><code>paused: true</code>. No reason is sent, so the copy names none. "Check again" re-reads context (same as pull-to-refresh).</p>
+        <span class="data">paused</span>
+      </figcaption>
+    </figure>
+
+    <!-- F5 no slots -->
+    <figure class="frame" id="f5">
+      <div class="phone"><div class="screen">
+        <div class="hero">
+          <div class="sbar on-pink"><span>1:10</span><span class="r">5G ▮▮▮</span></div>
+          <div class="nav"><div class="loc"><span class="tile"><svg class="ic s"><use href="#i-cal"/></svg></span><div><div class="d1">Lunch · <b>Today</b><svg class="ic s"><use href="#i-chev"/></svg></div><div class="d2">HSR Layout, Sector 2</div></div></div><div class="icons"><span class="ib"><svg class="ic"><use href="#i-search"/></svg></span></div></div>
+          <div class="toggle"><span class="seg"><svg class="ic"><use href="#i-zap"/></svg><span class="txt"><span class="h">Eat Now</span></span></span><span class="seg on"><svg class="ic"><use href="#i-cal"/></svg><span class="txt"><span class="h">Schedule</span></span></span></div>
+        </div>
+        <div class="slots">
+          <div class="slot off"><span class="tm">12:30<small>PM</small></span><span class="lc">Order by 11:30 AM</span><span class="left">Ordering closed</span></div>
+          <div class="slot off"><span class="tm">1:00<small>PM</small></span><span class="lc">Order by 12:00 PM</span><span class="left">Ordering closed</span></div>
+          <div class="slot off"><span class="tm">1:30<small>PM</small></span><span class="lc">Order by 12:30 PM</span><span class="left">Ordering closed</span></div>
+        </div>
+        <div class="state">
+          <div class="big"><svg class="ic l"><use href="#i-clock"/></svg></div>
+          <span class="ttl">Today's lunch slots are closed</span>
+          <p>Orders open again tomorrow at 7:00 AM. You can still order from restaurants delivering now.</p>
+          <span class="btn ghost">Order now instead</span>
+        </div>
+        <div class="tabs"><span class="on"><svg class="ic l"><use href="#i-home"/></svg>Home</span><span><svg class="ic l"><use href="#i-search"/></svg>Search</span><span><svg class="ic l"><use href="#i-list"/></svg>Orders</span><span><svg class="ic l"><use href="#i-user"/></svg>Profile</span></div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F5 · state</span>
+        <b>No orderable slot</b>
+        <p>Every slot has <code>orderable: false</code>, or <code>slots[]</code> is empty (then the strip is hidden and the title reads "No lunch slots today"). "Tomorrow at 7:00 AM" shows only if the server sends the next window; otherwise that sentence is dropped.</p>
+        <span class="data">slots[].orderable · windowOpensAtMs (next day, if sent)</span>
+      </figcaption>
+    </figure>
+
+    <!-- F6 not in area -->
+    <figure class="frame" id="f6">
+      <div class="phone"><div class="screen">
+        <div class="hero">
+          <div class="sbar on-pink"><span>11:22</span><span class="r">5G ▮▮▮</span></div>
+          <div class="nav"><div class="loc"><span class="tile"><svg class="ic s"><use href="#i-cal"/></svg></span><div><div class="d1">Lunch · <b>Today</b><svg class="ic s"><use href="#i-chev"/></svg></div><div class="d2">Koramangala 5th Block</div></div></div><div class="icons"><span class="ib"><svg class="ic"><use href="#i-search"/></svg></span></div></div>
+          <div class="toggle"><span class="seg"><svg class="ic"><use href="#i-zap"/></svg><span class="txt"><span class="h">Eat Now</span></span></span><span class="seg on"><svg class="ic"><use href="#i-cal"/></svg><span class="txt"><span class="h">Schedule</span></span></span></div>
+        </div>
+        <div class="state">
+          <div class="big"><svg class="ic l"><use href="#i-pin"/></svg></div>
+          <span class="ttl">Scheduled lunch isn't available here yet</span>
+          <p>It's live in HSR Layout. Change your address to an HSR Layout one, or order from restaurants delivering now.</p>
+          <span class="btn">Change address</span>
+          <span class="link">Order now instead</span>
+        </div>
+        <div class="tabs"><span class="on"><svg class="ic l"><use href="#i-home"/></svg>Home</span><span><svg class="ic l"><use href="#i-search"/></svg>Search</span><span><svg class="ic l"><use href="#i-list"/></svg>Orders</span><span><svg class="ic l"><use href="#i-user"/></svg>Profile</span></div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F6 · state</span>
+        <b>No area at this address</b>
+        <p>Only reachable when the customer is already in Schedule mode and changes address to one outside every area (otherwise the toggle is not shown at all). Naming "HSR Layout" needs a live-area name from the server; if it can't send one, the second sentence drops the name.</p>
+        <span class="data">area = null</span>
+      </figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ======================= 4.2 ======================= -->
+<section id="s42" class="slice">
+  <div class="shead">
+    <span class="tag">Slice 4.2 · feature/schedule-4.2-slot-menu</span>
+    <h2>Slot-first menu, add, and the three cart refusals</h2>
+    <p>The slot comes first, then restaurants and dishes. ADD goes through the guest gate, the customize sheet (when <code>customizable</code>), then <code>POST /api/cart/items</code> with <code>schedule {areaId, serviceDate, slotId}</code>.</p>
+  </div>
+  <div class="frames">
+
+    <!-- F7 schedule menu -->
+    <figure class="frame" id="f7">
+      <div class="phone"><div class="screen">
+        <div class="hero" style="padding-bottom:12px">
+          <div class="sbar on-pink"><span>11:22</span><span class="r">5G ▮▮▮</span></div>
+          <div class="nav"><div class="loc"><span class="tile"><svg class="ic s"><use href="#i-cal"/></svg></span><div><div class="d1">Lunch · <b>Today</b><svg class="ic s"><use href="#i-chev"/></svg></div><div class="d2">HSR Layout, Sector 2, 27th Main</div></div></div><div class="icons"><span class="ib"><svg class="ic"><use href="#i-search"/></svg></span><span class="ib dk"><svg class="ic"><use href="#i-user"/></svg></span></div></div>
+          <div class="toggle"><span class="seg"><svg class="ic"><use href="#i-zap"/></svg><span class="txt"><span class="h">Eat Now</span></span></span><span class="seg on"><svg class="ic"><use href="#i-cal"/></svg><span class="txt"><span class="h">Schedule</span></span></span></div>
+        </div>
+        <div class="slotHead"><b>When should we deliver?</b><button class="linkBtn" type="button">How it works</button></div>
+<div class="slots">
+          <div class="slot on warn"><span class="selected-mark" aria-hidden="true">✓</span><span class="tm">12:30<small>PM</small></span><span class="lc">Order by 11:30 AM</span><span class="left">8 min left</span></div>
+          <div class="slot"><span class="tm">1:00<small>PM</small></span><span class="lc">Order by 12:00 PM</span><span class="left">38 min left</span></div>
+          <div class="slot"><span class="tm">1:30<small>PM</small></span><span class="lc">Order by 12:30 PM</span><span class="left">1 h 8 min</span></div>
+        </div>
+        <div class="body" tabindex="0" aria-label="Scrollable app preview">
+          <div class="rest">
+            <div class="rhead"><div class="rimg ph p4"></div><div><div class="rname">Tandoor Lane</div><div class="rmeta">North Indian · 4 dishes for lunch</div></div></div>
+            <div class="dish"><div class="dl"><span class="veg"></span><span class="dn">Paneer butter masala bowl</span><span class="dp">₹189<s>₹219</s><em>14% off</em></span><span class="dc">Customizable</span></div><div class="dr"><div class="dimg ph p2"></div><span class="step"><svg class="ic s"><use href="#i-minus"/></svg>1<svg class="ic s"><use href="#i-plus"/></svg></span></div></div>
+            <div class="dish na"><div class="dl"><span class="veg nv"></span><span class="dn">Chicken dum biryani</span><span class="dp">₹219</span><span class="reason">Sold out</span></div><div class="dr"><div class="dimg ph"></div></div></div>
+            <div class="dish na"><div class="dl"><span class="veg"></span><span class="dn">Dal makhani rice bowl</span><span class="dp">₹159</span><span class="reason amb">Ordering closed at 11:00</span></div><div class="dr"><div class="dimg ph p5"></div></div></div>
+          </div>
+        </div>
+        <div class="cbar">
+          <div class="l"><span class="c"><svg class="ic"><use href="#i-cal"/></svg></span><span style="min-width:0"><b>Lunch at 12:30 PM</b><small>Order by 11:30 AM</small></span></div>
+          <div class="r"><span><b>View cart</b><small>1 item</small></span><svg class="ic s"><use href="#i-chevr"/></svg></div>
+        </div>
+        <div class="tabs"><span class="on"><svg class="ic l"><use href="#i-home"/></svg>Home</span><span><svg class="ic l"><use href="#i-search"/></svg>Search</span><span><svg class="ic l"><use href="#i-list"/></svg>Orders</span><span><svg class="ic l"><use href="#i-user"/></svg>Profile</span></div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F7 · main screen</span>
+        <b>Schedule menu for a slot</b>
+        <p>Restaurants with a lunch menu, dishes as rows (a menu, not a feed). Unavailable dishes stay in place, greyed, with one reason chip and no ADD. The Schedule CartBar replaces the delivery ring with the delivery time and its order-by time. Pull to refresh re-reads context; no polling. The bar shows no amount: the total depends on delivery, packaging and tax, so it appears only in the cart. Scroll the menu to reach every dish.</p>
+        <span class="data">restaurants[].dishes[] {startsAtPrice, mrp, discountPercent, reason, orderByMs, customizable} · Schedule cart lines</span>
+      </figcaption>
+    </figure>
+
+    <!-- F8 restaurant closed + more -->
+    <figure class="frame" id="f8">
+      <div class="phone"><div class="screen">
+        <div class="slots" style="padding-top:44px">
+          <div class="slot on"><span class="selected-mark" aria-hidden="true">✓</span><span class="tm">1:00<small>PM</small></span><span class="lc">Order by 12:00 PM</span><span class="left">38 min left</span></div>
+          <div class="slot"><span class="tm">1:30<small>PM</small></span><span class="lc">Order by 12:30 PM</span><span class="left">1 h 8 min</span></div>
+        </div>
+        <div class="body" tabindex="0" aria-label="Scrollable app preview">
+          <div class="rest">
+            <div class="rhead"><div class="rimg ph p3"></div><div><div class="rname">Ragi Mudde House</div><div class="rmeta">South Indian meals · 3 dishes for lunch</div></div></div>
+            <div class="dish"><div class="dl"><span class="veg"></span><span class="dn">Ragi mudde meal</span><span class="dp">₹129</span><span class="dc">Mudde, saaru, palya, curd</span></div><div class="dr"><div class="dimg ph p3"></div><span class="add">ADD<svg class="ic s"><use href="#i-plus"/></svg></span></div></div>
+            <div class="dish"><div class="dl"><span class="veg"></span><span class="dn">Spiced buttermilk</span><span class="dp">₹19</span><span class="dc">Min. order 2</span></div><div class="dr"><div class="dimg ph p5"></div><span class="add">ADD<svg class="ic s"><use href="#i-plus"/></svg></span></div></div>
+          </div>
+          <div class="rest closed">
+            <div class="rhead"><div class="rimg ph"></div><div><div class="rname">Bowl Theory</div><div class="rmeta">No dishes available right now</div></div></div>
+          </div>
+          <div class="pad"><div class="banner info"><svg class="ic"><use href="#i-info"/></svg><span>Showing what's available for 1:00 PM delivery. Pull down to refresh.</span></div></div>
+        </div>
+        <div class="tabs"><span class="on"><svg class="ic l"><use href="#i-home"/></svg>Home</span><span><svg class="ic l"><use href="#i-search"/></svg>Search</span><span><svg class="ic l"><use href="#i-list"/></svg>Orders</span><span><svg class="ic l"><use href="#i-user"/></svg>Profile</span></div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F8 · scrolled</span>
+        <b>Restaurant with no orderable dish, min order qty</b>
+        <p>A restaurant with <code>hasOrderableDish: false</code> (every dish sold out or past its order-by time) collapses to one greyed row at the end of the list instead of a block of greyed dishes. A restaurant that is closed today is not sent at all, so the app never shows it. <code>minOrderQty &gt; 1</code> shows as "Min. order 2" and ADD adds that quantity.</p>
+        <span class="data">restaurants[].hasOrderableDish · dishes[].minOrderQty</span>
+      </figcaption>
+    </figure>
+
+    <!-- F9 customize sheet -->
+    <figure class="frame" id="f9">
+      <div class="phone"><div class="screen">
+        <div class="slots" style="padding-top:44px"><div class="slot on warn"><span class="selected-mark" aria-hidden="true">✓</span><span class="tm">12:30<small>PM</small></span><span class="lc">Order by 11:30 AM</span><span class="left">8 min left</span></div></div>
+        <div class="body"></div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <span class="grab"></span>
+          <div class="row" style="gap:12px"><div class="rimg ph p2" style="width:52px;height:52px"></div><div><div class="rname" style="font-size:15px">Paneer butter masala bowl</div><div class="rmeta">Tandoor Lane · lunch at 12:30 PM</div></div></div>
+          <div>
+            <div class="row sp"><span class="ctitle">Choose your base</span><span class="mutedT">Required · pick 1</span></div>
+            <div class="opt"><span class="radio on"></span>Jeera rice<span class="v">+₹0</span></div>
+            <div class="opt"><span class="radio"></span>2 butter naan<span class="v">+₹20</span></div>
+          </div>
+          <div>
+            <div class="row sp"><span class="ctitle">Add extras</span><span class="mutedT">Optional</span></div>
+            <div class="opt"><span class="cb on"></span>Extra paneer<span class="v">+₹40</span></div>
+            <div class="opt"><span class="cb"></span>Salad cup<span class="v">+₹25</span></div>
+          </div>
+          <div class="banner info"><svg class="ic s"><use href="#i-info"/></svg><span>Some options aren't offered for scheduled lunch.</span></div>
+          <div class="row"><span class="qty"><svg class="ic s"><use href="#i-minus"/></svg>1<svg class="ic s"><use href="#i-plus"/></svg></span><span class="btn">Add item · ₹229</span></div>
+        </div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F9 · existing sheet, Schedule-aware</span>
+        <b>Customize, with Schedule-off options hidden</b>
+        <p>The existing customize sheet, with options in <code>unavailableAddonIds</code> removed (not greyed). The info line shows only when something was removed. The button total is the sheet's existing preview; the cart line is the price of record. The server still refuses as the backstop (F12).</p>
+        <span class="data">dish.customizable · dish.unavailableAddonIds · existing menu add-on groups</span>
+      </figcaption>
+    </figure>
+
+    <!-- F10 slot conflict -->
+    <figure class="frame" id="f10">
+      <div class="phone"><div class="screen">
+        <div class="slots" style="padding-top:44px">
+          <div class="slot"><span class="tm">12:30<small>PM</small></span><span class="lc">Order by 11:30 AM</span><span class="left">8 min left</span></div>
+          <div class="slot on"><span class="selected-mark" aria-hidden="true">✓</span><span class="tm">1:00<small>PM</small></span><span class="lc">Order by 12:00 PM</span><span class="left">38 min left</span></div>
+        </div>
+        <div class="body"></div>
+        <div class="scrim"></div>
+        <div class="dialog">
+          <span class="icoBadge"><svg class="ic"><use href="#i-cal"/></svg></span>
+          <span class="ttl">Switch to the 1:00 PM lunch?</span>
+          <p>Your cart has 2 items for the 12:30 PM lunch. One order can only have one delivery time, so switching clears your cart.</p>
+          <div class="acts"><span class="btn ghost">Keep 12:30</span><span class="btn">Clear and switch</span></div>
+        </div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F10 · 409 ScheduleCartConflict</span>
+        <b>Cart holds another slot (or date, or area)</b>
+        <p>Shown on ADD when the server refuses with the conflict response. The copy names the cart's slot from the response, not from local state. "Clear and switch" clears only the Schedule cart, then retries the add once.</p>
+        <span class="data">data.error = SCHEDULE_CART_SLOT_CONFLICT · existing{slotStart, areaName} · requested{slotStart}</span>
+      </figcaption>
+    </figure>
+
+    <!-- F11 shop limit -->
+    <figure class="frame" id="f11">
+      <div class="phone"><div class="screen">
+        <div class="body" style="padding-top:44px"></div>
+        <div class="scrim"></div>
+        <div class="dialog">
+          <span class="icoBadge amb"><svg class="ic"><use href="#i-store"/></svg></span>
+          <span class="ttl">Can't add Bowl Theory to this order</span>
+          <p>Bowl Theory can't be delivered together with what's already in your cart. Clear your cart to order from Bowl Theory instead.</p>
+          <div class="acts"><span class="btn ghost">Keep my cart</span><span class="btn">Clear and add</span></div>
+        </div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F11 · 409 ScheduleCartShopLimit</span>
+        <b>This restaurant can't join the order</b>
+        <p>The server decides which restaurants can go in one order. Today that rule is only a count (area setting, default 3). A pairing rule (nearby restaurants only, certain dishes, Ninjasu's own kitchen) is not built. The text names no number and no reason, so it stays right when the rule changes. "Clear and add" clears only the Schedule cart, then retries the add.</p>
+        <span class="data">data.error = SCHEDULE_CART_SHOP_LIMIT · maxShops · cart shop names</span>
+      </figcaption>
+    </figure>
+
+    <!-- F12 refused -->
+    <figure class="frame" id="f12">
+      <div class="phone"><div class="screen">
+        <div class="body" style="padding-top:44px"></div>
+        <div class="scrim"></div>
+        <div class="dialog">
+          <span class="icoBadge err"><svg class="ic"><use href="#i-alert"/></svg></span>
+          <span class="ttl">Can't add Chicken dum biryani</span>
+          <p>It sold out for today's lunch a moment ago. Refresh the menu to see what's available.</p>
+          <div class="acts"><span class="btn">Refresh menu</span></div>
+        </div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F12 · ScheduleDishRefused (400)</span>
+        <b>Dish refused at add</b>
+        <p>The body text comes from the reason table below, with the same mapping the dish chips use. After Refresh menu the app re-reads context so the dish shows its new state. This arrives as a 400, which is why the app branches on <code>data.error</code>.</p>
+        <span class="data">data.error = SCHEDULE_DISH_REFUSED · reason</span>
+      </figcaption>
+    </figure>
+
+  </div>
+
+  <div class="box" style="margin-top:8px">
+    <span class="k">One mapping table: reason → chip copy (F7) and refusal copy (F12). The menu feed sends only ORDERABLE, SOLD_OUT and ORDER_BY_PASSED (any other reason hides the dish), so only those two ever show as a chip; the other rows appear only in the add refusal (F12).</span>
+    <div class="tw">
+      <table class="t">
+        <thead><tr><th>Server reason</th><th>Dish chip</th><th>Refusal dialog body</th><th>Chip tone</th></tr></thead>
+        <tbody>
+          <tr><td><code>ORDER_BY_PASSED</code></td><td>Ordering closed at 11:00 (from <code>orderByMs</code>)</td><td>Orders for this dish closed at 11:00.</td><td>amber</td></tr>
+          <tr><td><code>SOLD_OUT</code></td><td>Sold out</td><td>It sold out for today's lunch a moment ago.</td><td>grey</td></tr>
+          <tr><td><code>SLOT_CLOSED</code></td><td>(dish hidden)</td><td>This delivery time isn't taking orders now. Choose another time.</td><td>none</td></tr>
+          <tr><td><code>RESTAURANT_CLOSED</code></td><td>(dish hidden)</td><td>The restaurant isn't taking lunch orders today.</td><td>none</td></tr>
+          <tr><td><code>OFF</code></td><td>Not available today</td><td>This dish isn't available today.</td><td>grey</td></tr>
+          <tr><td>add-on refused</td><td>(none)</td><td>One of your options isn't offered for scheduled lunch. Pick again.</td><td>(dialog only)</td></tr>
+          <tr><td>anything else</td><td>Not available</td><td>This dish can't be added right now.</td><td>grey</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 4.3 ======================= -->
+<section id="s43" class="slice">
+  <div class="shead">
+    <span class="tag">Slice 4.3 · feature/schedule-4.3-checkout · money path (client) · after E3 merges</span>
+    <h2>Schedule cart, checkout and payment states</h2>
+    <p>Every bill row is a server value from the shared quote (<code>ScheduleQuoteService</code>). The app sends <code>payableTotal</code> back unchanged as <code>expectedPayableTotal</code>, with one idempotency key per request body, persisted before sending.</p>
+  </div>
+  <div class="frames">
+
+    <!-- F13 cart -->
+    <figure class="frame" id="f13">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>11:24</span><span class="r">5G ▮▮▮</span></div>
+        <div class="ahdr"><svg class="ic l"><use href="#i-back"/></svg><div><b>Schedule cart</b><small>Lunch · Today</small></div></div>
+        <div class="scroll" tabindex="0" aria-label="Scrollable app preview">
+          <div class="ticket">
+            <div class="big">12:30<small> PM</small></div>
+            <div class="meta"><b>Order by 11:30</b> · 6 min left<br>Delivered around 12:30 to HSR Layout</div>
+          </div>
+          <div class="card">
+            <span class="ctitle">Tandoor Lane</span>
+            <div class="line"><span class="nm">Paneer butter masala bowl<small>Jeera rice, Extra paneer</small></span><span class="qty">1</span><span class="v">₹229</span></div>
+            <div class="line"><span class="nm">Ghee rice + dal</span><span class="qty">1</span><span class="v">₹149</span></div>
+            </div>
+<div class="card">
+<span class="ctitle">Ragi Mudde House</span>
+            <div class="line"><span class="nm">Ragi mudde meal</span><span class="qty">1</span><span class="v">₹129</span></div>
+            <div class="line"><span class="nm">Spiced buttermilk</span><span class="qty">2</span><span class="v">₹38</span></div>
+          </div>
+          <div class="card">
+            <div class="row sp"><span class="ctitle">Deliver to</span><span class="link">Change</span></div>
+            <div class="row" style="align-items:flex-start"><svg class="ic"><use href="#i-pin"/></svg><span style="font-size:12.5px"><b class="h">Office</b><br><span class="mutedT">4th floor, 27th Main, HSR Layout Sector 2</span></span></div>
+          </div>
+          <div class="card bill">
+            <span class="ctitle">Bill details</span>
+            <div class="line"><span>Item total</span><span class="v">₹545.00</span></div>
+            <div class="line"><span>Delivery fee</span><span class="v">₹30.00</span></div>
+            <div class="line"><span>Packaging</span><span class="v">₹20.00</span></div>
+            <div class="line"><span>GST</span><span class="v">₹27.25</span></div>
+            <div class="line"><span>Round off</span><span class="v">−₹0.25</span></div>
+            <div class="div"></div>
+            <div class="tot"><b>To pay</b><span class="v">₹622</span></div>
+          </div>
+        </div>
+        <div class="paybar"><div class="amt"><b>₹622</b><small>To pay</small></div><span class="btn">Pay with UPI</span></div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F13 · normal</span>
+        <b>Schedule cart grouped by restaurant</b>
+        <p>The slot ticket heads the cart and keeps its countdown. One card per restaurant (one Schedule order each), one bill for the group. "To pay" is <code>payableTotal</code>, never a sum the app computes. The address picker is the saved-address sheet that exists today.</p>
+        <span class="data">GET /api/cart?type=FOOD&amp;fulfilment=SCHEDULE → lines{shopId,shopName} · subtotal · deliveryFee · packagingFee · taxTotal · taxLines · roundOff · payableTotal · members[] · schedule{slotStart, state}</span>
+      </figcaption>
+    </figure>
+
+    <!-- F14 price changed in cart -->
+    <figure class="frame" id="f14">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>11:25</span><span class="r">5G ▮▮▮</span></div>
+        <div class="ahdr"><svg class="ic l"><use href="#i-back"/></svg><div><b>Schedule cart</b><small>Lunch · Today</small></div></div>
+        <div class="scroll" tabindex="0" aria-label="Scrollable app preview">
+          <div class="banner amb"><svg class="ic"><use href="#i-alert"/></svg><span><b>The price of 1 item has changed</b>Check the new price to see your total.</span></div>
+          <div class="card">
+            <span class="ctitle">Tandoor Lane</span>
+            <div class="line"><span class="nm">Paneer butter masala bowl<small style="color:var(--a-warnText)">Was ₹229 · now ₹239</small></span><span class="qty">1</span><span class="v">₹239</span></div>
+            <div class="line"><span class="nm">Ghee rice + dal</span><span class="qty">1</span><span class="v">₹149</span></div>
+          </div>
+          <div class="card">
+            <span class="ctitle">Ragi Mudde House</span>
+            <div class="line"><span class="nm">Ragi mudde meal</span><span class="qty">1</span><span class="v">₹129</span></div>
+            <div class="line"><span class="nm">Spiced buttermilk</span><span class="qty">2</span><span class="v">₹38</span></div>
+          </div>
+        </div>
+        <div class="paybar"><span class="btn">Check new price</span></div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F14 · payableTotal = null</span>
+        <b>Cart with a changed line</b>
+        <p>While any item's price has changed, the server sends no total (DA-1). The app then shows no bill at all, never a half-filled one. The button opens the existing accept-changes flow; after that the cart re-reads and the full bill (F13) comes back.</p>
+        <span class="data">payableTotal = null · line status PRICE_CHANGED (existing accept-changes)</span>
+      </figcaption>
+    </figure>
+
+    <!-- F15 PRICE_CHANGED at checkout -->
+    <figure class="frame" id="f15">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>11:26</span><span class="r">5G ▮▮▮</span></div>
+        <div class="ahdr"><svg class="ic l"><use href="#i-back"/></svg><div><b>Schedule cart</b><small>Lunch · Today</small></div></div>
+        <div class="scroll"></div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <span class="grab"></span>
+          <span class="ctitle" style="font-size:16px">Your total changed</span>
+          <p class="mutedT" style="font-size:12.5px">A price changed while you were checking out. Nothing has been charged.</p>
+          <div class="card" style="box-shadow:none;border:1px solid var(--a-divider)">
+            <div class="line"><span class="nm">Tandoor Lane</span><span class="v">₹432.40 <span style="color:var(--a-hint);text-decoration:line-through;font-weight:500">₹421.90</span></span></div>
+            <div class="line"><span class="nm">Ragi Mudde House</span><span class="v">₹200.35</span></div>
+            <div class="line"><span class="nm mutedT">Round off</span><span class="v">+₹0.25</span></div>
+            <div class="div"></div>
+            <div class="tot"><b>New total</b><span class="v">₹633</span></div>
+            <div class="mutedT">Was ₹622</div>
+          </div>
+          <div class="row"><span class="btn ghost">Back to cart</span><span class="btn">Pay ₹633</span></div>
+        </div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F15 · 409 PRICE_CHANGED</span>
+        <b>Reconfirm the new payable</b>
+        <p>Old total is the value the app sent; new totals come from <code>members[]</code> and <code>payableTotal</code> in the error. "Pay" retries with the new value and a new idempotency key (the body changed). If <code>members</code> is missing, the sheet shows only the new total.</p>
+        <span class="data">data.error = PRICE_CHANGED · members[] · payableTotal</span>
+      </figcaption>
+    </figure>
+
+    <!-- F16 LINE_UNAVAILABLE -->
+    <figure class="frame" id="f16">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>11:26</span><span class="r">5G ▮▮▮</span></div>
+        <div class="ahdr"><svg class="ic l"><use href="#i-back"/></svg><div><b>Schedule cart</b><small>Lunch · Today</small></div></div>
+        <div class="scroll" tabindex="0" aria-label="Scrollable app preview">
+          <div class="banner err"><svg class="ic"><use href="#i-alert"/></svg><span><b>2 items need attention</b>Nothing has been charged.</span></div>
+          <div class="card">
+            <span class="ctitle">Tandoor Lane</span>
+            <div class="line"><span class="nm" style="color:var(--a-disabled)">Chicken dum biryani<small style="color:var(--a-error)">Sold out for today</small></span><span class="btn dng sm">Remove</span></div>
+            <div class="line"><span class="nm">Ghee rice + dal</span><span class="qty">1</span><span class="v">₹149</span></div>
+          </div>
+          <div class="card">
+            <span class="ctitle">Ragi Mudde House</span>
+            <div class="line"><span class="nm">Ragi mudde meal<small style="color:var(--a-warnText)">Someone is checking out the last one. Try again in a few minutes.</small></span><span class="qty">1</span><span class="v">₹129</span></div>
+          </div>
+        </div>
+        <div class="paybar"><span class="btn dis">Remove sold-out items to pay</span></div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F16 · 409 LINE_UNAVAILABLE</span>
+        <b>Sold out vs held</b>
+        <p>SOLD_OUT lines get Remove and block Pay until removed. HELD lines stay, with a retry message; once only HELD lines remain, Pay re-enables (the hold lasts 180 s). If <code>lines</code> is missing, a generic banner asks the customer to refresh the cart.</p>
+        <span class="data">data.error = LINE_UNAVAILABLE · lines[] {lineId, reason SOLD_OUT | HELD | …}</span>
+      </figcaption>
+    </figure>
+
+    <!-- F17 UNRESOLVED_GROUP -->
+    <figure class="frame" id="f17">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>11:27</span><span class="r">5G ▮▮▮</span></div>
+        <div class="ahdr"><svg class="ic l"><use href="#i-back"/></svg><div><b>Schedule cart</b><small>Lunch · Today</small></div></div>
+        <div class="scroll"></div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <span class="grab"></span>
+          <span class="icoBadge amb"><svg class="ic"><use href="#i-lock"/></svg></span>
+          <span class="ctitle" style="font-size:16px">You have an unfinished payment</span>
+          <p class="mutedT" style="font-size:12.5px">Your 12:30 PM lunch (₹622) is waiting for payment. Pay now, or cancel it to start again.</p>
+          <div class="row"><span class="btn ghost">Cancel order</span><span class="btn">Pay ₹622</span></div>
+        </div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F17 · 409 UNRESOLVED_GROUP</span>
+        <b>Open checkout from an earlier attempt</b>
+        <p>Typically after the app was killed with the payment sheet open. Pay reopens Razorpay for that group; Cancel calls <code>payments/cancel</code> (gateway-checked on the server). With <code>paymentInProgress</code> the app never offers cancel.</p>
+        <span class="data">data.error = UNRESOLVED_GROUP · groupId · holdExpiresAtMs · paymentInProgress</span>
+      </figcaption>
+    </figure>
+
+    <!-- F17b payment in progress -->
+    <figure class="frame" id="f17b">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>11:27</span><span class="r">5G ▮▮▮</span></div>
+        <div class="ahdr"><svg class="ic l"><use href="#i-back"/></svg><div><b>Schedule cart</b><small>Lunch · Today</small></div></div>
+        <div class="scroll"></div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <span class="grab"></span>
+          <span class="icoBadge amb"><svg class="ic"><use href="#i-lock"/></svg></span>
+          <span class="ctitle" style="font-size:16px">Your payment is being checked</span>
+          <p class="mutedT" style="font-size:12.5px">A payment for your 12:30 PM lunch is already in progress. View the order for updates. Please don't pay again.</p>
+          <div class="row"><span class="btn">View order</span></div>
+        </div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F17b · payment in progress</span>
+        <b>An earlier payment is still processing</b>
+        <p>The same UNRESOLVED_GROUP error with <code>paymentInProgress</code> set. Only "View order" is offered: no second payment and no cancel.</p>
+        <span class="data">data.error = UNRESOLVED_GROUP · groupId · holdExpiresAtMs · paymentInProgress</span>
+      </figcaption>
+    </figure>
+
+
+    <!-- F18 slot closed -->
+    <figure class="frame" id="f18">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>11:31</span><span class="r">5G ▮▮▮</span></div>
+        <div class="ahdr"><svg class="ic l"><use href="#i-back"/></svg><div><b>Schedule cart</b><small>Lunch · Today</small></div></div>
+        <div class="scroll" tabindex="0" aria-label="Scrollable app preview">
+          <div class="ticket" style="background:var(--a-section);border-color:var(--a-disabled)">
+            <div class="big" style="color:var(--a-disabled)">12:30<small> PM</small></div>
+            <div class="meta"><b>Ordering closed</b> at 11:30</div>
+          </div>
+          <div class="banner amb"><svg class="ic"><use href="#i-clock"/></svg><span><b>Ordering for 12:30 PM has closed</b>You can browse other times. Adding an item for a new time will ask you to clear this cart.</span></div>
+          <div class="card">
+            <span class="ctitle">Tandoor Lane</span>
+            <div class="line"><span class="nm">Paneer butter masala bowl</span><span class="qty">1</span><span class="v">₹229</span></div>
+          </div>
+        </div>
+        <div class="paybar"><span class="btn ghost">Clear cart</span><span class="btn">Browse times</span></div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F18 · cart state SLOT_CLOSED / DATE_PASSED</span>
+        <b>Delivery time closed while in the cart</b>
+        <p>Pay is replaced, not just disabled. "Browse times" goes back to the menu with the cart kept; the first ADD for a new time triggers F10, which asks to clear the cart. A seamless "move my cart to 1:00 PM" would need a backend endpoint (hand-off, not app logic). DATE_PASSED drops the browse button.</p>
+        <span class="data">schedule.state = SLOT_CLOSED | DATE_PASSED</span>
+      </figcaption>
+    </figure>
+    <!-- F18b address unavailable -->
+    <figure class="frame" id="f18b">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>11:20</span><span class="r">5G ▮▮▮</span></div>
+        <div class="ahdr"><svg class="ic l"><use href="#i-back"/></svg><div><b>Schedule cart</b><small>Lunch · Today</small></div></div>
+        <div class="scroll" tabindex="0" aria-label="Scrollable app preview">
+          <div class="banner amb"><svg class="ic"><use href="#i-pin"/></svg><span><b>Scheduled lunch isn't available at this address</b>Choose another delivery address to continue.</span></div>
+          <div class="card">
+            <span class="ctitle">Tandoor Lane</span>
+            <div class="line"><span class="nm">Paneer butter masala bowl</span><span class="qty">1</span><span class="v">₹229</span></div>
+          </div>
+          <div class="card">
+            <div class="row sp"><span class="ctitle">Deliver to</span><span class="link">Change</span></div>
+            <p class="mutedT">Your selected address is outside the delivery area.</p>
+          </div>
+        </div>
+        <div class="paybar"><span class="btn">Change address</span></div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F18b · AREA_CLOSED</span>
+        <b>Delivery address unavailable</b>
+        <p>A separate state from a closed delivery time. After the address changes, the app re-reads context and the cart before Pay is enabled again.</p>
+        <span class="data">data.error = AREA_CLOSED (checkout)</span>
+      </figcaption>
+    </figure>
+
+    <!-- F19 razorpay -->
+    <figure class="frame" id="f19">
+      <div class="phone"><div class="screen">
+        <div class="vendor">
+          <div class="sbar" style="background:#0C2651;color:#FFFFFF"><span>11:27</span><span class="r">5G ▮▮▮</span></div>
+          <div class="vh"><b>Ninjasu</b><span style="font-size:12px;opacity:.8">Lunch · SCH-7K2Q · ₹622</span></div>
+          <div class="vb">
+            <div class="vrow"><span>Pay by any UPI app</span><span>›</span></div>
+            <div class="vrow"><span>UPI ID</span><span>›</span></div>
+            <div class="vrow"><span style="opacity:.6">This page closes in 2:40</span><span></span></div>
+          </div>
+        </div>
+        <div class="ribbon">Razorpay's own UI · not designed here</div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F19 · vendor sheet</span>
+        <b>Razorpay checkout with a timeout</b>
+        <p>Opened with <code>timeout</code> = (holdExpiresAtMs − serverNowMs)/1000 − 10, about 170 s, so the sheet closes before the hold lapses. Prefill (name, phone) comes from <code>useUserStore</code>. Whether the Android SDK honours <code>timeout</code> is a device test (wave 2).</p>
+        <span class="data">razorpayOrderId · keyId · amount (paise) · holdExpiresAtMs · serverNowMs</span>
+      </figcaption>
+    </figure>
+
+    <!-- F20 confirming -->
+    <figure class="frame" id="f20">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>11:28</span><span class="r">5G ▮▮▮</span></div>
+        <div class="ahdr"><svg class="ic l"><use href="#i-back"/></svg><div><b>Schedule order</b><small>SCH-7K2Q</small></div></div>
+        <div class="scroll" tabindex="0" aria-label="Scrollable app preview">
+          <div class="card">
+            <div class="confirm">
+              <div class="ring" aria-hidden="true"></div>
+              <span class="ttl">Confirming your payment</span>
+              <p>We're checking the status of your ₹622 payment. Your order will update when it's confirmed. Please don't pay again.</p>
+            </div>
+          </div>
+          <div class="card" style="opacity:.55">
+            <div class="ticket" style="padding:8px 10px"><div class="big" style="font-size:16px">12:30<small> PM</small></div><div class="meta"><b>Tandoor Lane, Ragi Mudde House</b></div></div>
+          </div>
+        </div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F20 · E3 shared component (Lane 1 builds, 4.3 reuses)</span>
+        <b>Confirming payment</b>
+        <p>Shown when verify returns waiting-for-capture or fails on the network: no Cancel, no resume; the group screen polls. Wording is open decision OD5.</p>
+        <span class="data">verify → ScheduleGroupView (pending) · group paymentStatus · usePollWhileFocused</span>
+      </figcaption>
+    </figure>
+    <!-- F20b checking -->
+    <figure class="frame" id="f20b">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>11:28</span><span class="r">5G ▮▮▮</span></div>
+        <div class="ahdr"><svg class="ic l"><use href="#i-back"/></svg><div><b>Schedule order</b><small>SCH-7K2Q</small></div></div>
+        <div class="scroll" tabindex="0" aria-label="Scrollable app preview">
+          <div class="card">
+            <div class="confirm">
+              <div class="ring" aria-hidden="true"></div>
+              <span class="ttl">Checking your payment</span>
+              <p>If you approved ₹622 in your UPI app, we'll check it here. Please don't pay again while we confirm the result.</p>
+            </div>
+          </div>
+          <div class="card" style="opacity:.55">
+            <div class="ticket" style="padding:8px 10px"><div class="big" style="font-size:16px">12:30<small> PM</small></div><div class="meta"><b>Tandoor Lane, Ragi Mudde House</b></div></div>
+          </div>
+        </div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F20b · after the payment sheet closes</span>
+        <b>Checking a dismissed payment</b>
+        <p>Same component, shown after the customer closes the sheet without success. Poll the group up to 20 s, then call cancel only if no payment arrived (DA-2). No pay-again action while checking.</p>
+        <span class="data">POST /payments/cancel only after the poll · group paymentStatus</span>
+      </figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ======================= 4.4 ======================= -->
+<section id="s44" class="slice">
+  <div class="shead">
+    <span class="tag">Slice 4.4 (partial) · feature/schedule-4.4-cancel</span>
+    <h2>Group screen: land here after paying, cancel from here</h2>
+    <p>Builds on the existing <code>ScheduleGroupScreen</code>. Adds a header summary, a cancel card when <code>canCancel</code>, and a late-cancel action per restaurant when that order's <code>canLateCancel</code> is true. Push (2d.2) is not in this slice.</p>
+  </div>
+  <div class="frames">
+
+    <!-- F21 group screen -->
+    <figure class="frame" id="f21">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>11:29</span><span class="r">5G ▮▮▮</span></div>
+        <div class="ahdr"><svg class="ic l"><use href="#i-back"/></svg><div><b>Schedule order</b><small>SCH-7K2Q</small></div></div>
+        <div class="scroll" tabindex="0" aria-label="Scrollable app preview">
+          <div class="banner ok"><svg class="ic"><use href="#i-check"/></svg><span><b>Paid ₹622</b>Your lunch is booked.</span></div>
+          <div class="ticket">
+            <div class="big">12:30<small> PM</small></div>
+            <div class="meta"><b>Today · delivered around 12:30</b><br>Office, 27th Main, HSR Layout</div>
+          </div>
+          <div class="card">
+            <div class="row sp"><span class="ctitle">Tandoor Lane</span><span class="st"><i class="statusDot" style="background:var(--a-veg)"></i><span style="color:var(--a-veg)">Accepted</span></span></div>
+            <div class="line"><span class="nm">Paneer butter masala bowl × 1</span><span class="v">₹229</span></div>
+            <div class="line"><span class="nm">Ghee rice + dal × 1</span><span class="v">₹149</span></div>
+          </div>
+          <div class="card">
+            <div class="row sp"><span class="ctitle">Ragi Mudde House</span><span class="st"><i class="statusDot" style="background:var(--a-amber)"></i><span style="color:var(--a-warnText)">Waiting for restaurant</span></span></div>
+            <div class="line"><span class="nm">Ragi mudde meal × 1</span><span class="v">₹129</span></div>
+            <div class="line"><span class="nm">Spiced buttermilk × 2</span><span class="v">₹38</span></div>
+          </div>
+          <div class="card">
+            <div class="row sp"><span class="ctitle">Need to cancel?</span><span class="mutedT">Until 11:30 AM</span></div>
+            <p class="mutedT" style="font-size:12px">Cancel the whole lunch for a full refund.</p>
+            <span class="btn dng" style="flex:none">Cancel lunch</span>
+          </div>
+        </div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F21 · after checkout</span>
+        <b>Group screen with cancel</b>
+        <p>Checkout success lands here. The cancel card shows only while <code>canCancel</code>; its deadline is <code>cancelUntilAt</code>. Status labels and tones are the existing <code>scheduleMemberStatusMeta</code>. Totals and refunds cards from today's screen stay below.</p>
+        <span class="data">GET /api/schedule/groups/{id} · canCancel · cancelUntilAt · members[].status</span>
+      </figcaption>
+    </figure>
+
+    <!-- F22 cancel confirm -->
+    <figure class="frame" id="f22">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>11:29</span><span class="r">5G ▮▮▮</span></div>
+        <div class="ahdr"><svg class="ic l"><use href="#i-back"/></svg><div><b>Schedule order</b><small>SCH-7K2Q</small></div></div>
+        <div class="scroll"></div>
+        <div class="scrim"></div>
+        <div class="dialog">
+          <span class="icoBadge err"><svg class="ic"><use href="#i-x"/></svg></span>
+          <span class="ttl">Cancel your 12:30 PM lunch?</span>
+          <p>Both restaurants' orders will be cancelled. You'll get a full refund to your original payment method.</p>
+          <div class="acts"><span class="btn ghost">Keep lunch</span><span class="btn" style="background:var(--a-error)">Cancel lunch</span></div>
+        </div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F22 · confirm</span>
+        <b>Cancel confirmation, no amount</b>
+        <p>No refund amount before cancelling: the server sends no cancel quote (API-6) and the app must not compute one. The amount appears after cancel, from the <code>refunds</code> rows.</p>
+        <span class="data">POST /groups/{id}/cancel</span>
+      </figcaption>
+    </figure>
+
+    <!-- F23 late cancel -->
+    <figure class="frame" id="f23">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>12:05</span><span class="r">5G ▮▮▮</span></div>
+        <div class="ahdr"><svg class="ic l"><use href="#i-back"/></svg><div><b>Schedule order</b><small>SCH-7K2Q</small></div></div>
+        <div class="scroll" tabindex="0" aria-label="Scrollable app preview">
+          <div class="card">
+            <div class="row sp"><span class="ctitle">Tandoor Lane</span><span class="st"><i class="statusDot" style="background:var(--a-veg)"></i><span style="color:var(--a-veg)">Being prepared</span></span></div>
+            <div class="line"><span class="nm">Paneer butter masala bowl × 1</span><span class="v">₹229</span></div>
+          </div>
+          <div class="card">
+            <div class="row sp"><span class="ctitle">Ragi Mudde House</span><span class="st"><i class="statusDot" style="background:var(--a-amber)"></i><span style="color:var(--a-warnText)">Not confirmed yet</span></span></div>
+            <div class="line"><span class="nm">Ragi mudde meal × 1</span><span class="v">₹129</span></div>
+            <div class="banner amb" style="padding:8px 10px"><svg class="ic s"><use href="#i-clock"/></svg><span>The restaurant hasn't confirmed this order. You can cancel this part.</span></div>
+            <span class="btn dng sm" style="justify-self:start">Cancel Ragi Mudde House order</span>
+          </div>
+        </div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F23 · per restaurant</span>
+        <b>Late cancel for one restaurant</b>
+        <p>The action shows per restaurant only when that member's <code>canLateCancel</code> is true; the app does not compare the clock to <code>lateCancelFromAt</code>. Refund rows appear after cancelling (F23b), not next to an active cancel action.</p>
+        <span class="data">members[].canLateCancel · POST /orders/{id}/late-cancel</span>
+      </figcaption>
+    </figure>
+    <!-- F23b after cancellation -->
+    <figure class="frame" id="f23b">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>12:06</span><span class="r">5G ▮▮▮</span></div>
+        <div class="ahdr"><svg class="ic l"><use href="#i-back"/></svg><div><b>Schedule order</b><small>SCH-7K2Q</small></div></div>
+        <div class="scroll" tabindex="0" aria-label="Scrollable app preview">
+          <div class="card">
+            <div class="row sp"><span class="ctitle">Tandoor Lane</span><span class="st"><i class="statusDot" style="background:var(--a-veg)"></i><span style="color:var(--a-veg)">Being prepared</span></span></div>
+            <div class="line"><span class="nm">Paneer butter masala bowl × 1</span><span class="v">₹229</span></div>
+          </div>
+          <div class="card">
+            <div class="row sp"><span class="ctitle">Ragi Mudde House</span><span class="st"><i class="statusDot" style="background:var(--a-disabled)"></i><span style="color:var(--a-text2)">Cancelled</span></span></div>
+            <div class="line"><span class="nm">Ragi mudde meal × 1</span><span class="v">₹129</span></div>
+          </div>
+          <div class="card">
+            <div class="row sp"><span class="ctitle">Refunds</span><span class="mutedT">Refund requested</span></div>
+            <div class="line"><span class="nm">Ragi Mudde House order cancelled<small>To your original payment method</small></span><span class="v" style="color:var(--a-veg)">₹200.35</span></div>
+          </div>
+        </div>
+      </div></div>
+      <figcaption>
+        <span class="fid">F23b · after cancelling</span>
+        <b>Cancelled order and refund</b>
+        <p>The refund amount and status come from <code>refunds[]</code>; the app never infers that money has arrived. A timing line ("5 to 7 working days") appears only once the refund policy confirms it.</p>
+        <span class="data">refunds[] · groupRefundLabel copy</span>
+      </figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ======================= review ======================= -->
+<section id="review" class="slice">
+  <div class="shead">
+    <span class="tag">For the reviewer (Codex, ChatGPT, or a person)</span>
+    <h2>Review questions</h2>
+    <p>Each one is a choice this page made that could reasonably go the other way. Answer by frame number.</p>
+  </div>
+  <ol class="q">
+    <li><b>Toggle placement (F1).</b> Inside the pink hero, under the location row. The other options: a chip in the white filter row, or a separate tab. Does the hero placement read as a mode switch rather than a filter?</li>
+    <li><b>Hero copy in Schedule mode (F1, F7).</b> The location row changes from "Delivery in 15 mins" to "Lunch · Today". Is it clear enough that the customer is now in a different flow?</li>
+    <li><b>Delivery time tickets (F1, F7, F13).</b> Each shows "Delivery around 12:30 PM", an "Order by" time and a text countdown ("8 min left", amber near closing). Is the countdown helpful, or does it pressure people? Should it show only in the last hour?</li>
+    <li><b>Unavailable dishes (F7, F8).</b> Greyed dishes stay in place with a reason chip, and a restaurant with nothing orderable collapses to one row at the bottom. Should sold-out dishes move to the bottom of their restaurant too?</li>
+    <li><b>What the time means (all tickets).</b> "Order by 11:30 AM" is when ordering stops; food arrives around 12:30 PM. The server sends only a start time per delivery time, so the app can't show a range like "12:30 to 12:45". Is "around" enough, or should the server send a window end?</li>
+    <li><b>Delivery time closed in the cart (F18).</b> "Browse times" keeps the cart; adding an item for a new time asks to clear it (F10). A seamless "move my cart" would need a backend change. Is the extra step acceptable?</li>
+    <li><b>Payment states (F20, F20b).</b> One state per screen, each ending with "don't pay again". Are "Confirming" (after verify) and "Checking" (after the sheet is closed) different enough to keep apart? (OD5)</li>
+    <li><b>Which restaurants can be combined (F11).</b> Only a count is built. Pairing by distance, by dish, or with Ninjasu's own kitchen would be a server rule; the dialog text already works for any such rule. Is a generic "can't be delivered together" message enough, or should the server send a reason?</li>
+    <li><b>Unfinished payment (F17, F17b).</b> Is "Cancel order" safe to show next to "Pay", given the server checks the gateway before cancelling? F17b offers only "View order".</li>
+    <li><b>Cancel confirmation (F22).</b> No amount is shown before cancelling. Is "full refund to your original payment method" enough reassurance?</li>
+    <li><b>Missing states.</b> Is any state from plan §3 or the backend error list missing here? Known gaps: offline or timeout on the context read (uses the shared ErrorState), and the guest login prompt at ADD (uses the existing LoginPromptModal, so not drawn).</li>
+  </ol>
+  <div class="note" style="max-width:86ch">Example values: prices, fees, GST and restaurant names are invented, and the arithmetic in F13 and F15 adds up only so the mock is consistent (GST 5%, fees split equally between restaurants in the F15 member totals). In the app, every amount is a server field.</div>
+</section>
+
+</div>
+
+<script>
+(function () {
+  var screen = document.getElementById('f1');
+  var segs = Array.prototype.slice.call(screen.querySelectorAll('.seg[data-set]'));
+  function setMode(b) {
+    screen.setAttribute('data-mode', b.getAttribute('data-set'));
+    segs.forEach(function (s) {
+      var on = s === b;
+      s.classList.toggle('on', on);
+      s.setAttribute('aria-selected', on ? 'true' : 'false');
+      s.tabIndex = on ? 0 : -1;
+    });
+  }
+  segs.forEach(function (b) {
+    b.tabIndex = b.classList.contains('on') ? 0 : -1;
+    b.addEventListener('click', function () { setMode(b); });
+    b.addEventListener('keydown', function (e) {
+      if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].indexOf(e.key) < 0) return;
+      e.preventDefault();
+      var next = e.key === 'Home' ? segs[0] : e.key === 'End' ? segs[segs.length - 1] : segs[1 - segs.indexOf(b)];
+      setMode(next);
+      next.focus();
+    });
+  });
+  var tickets = Array.prototype.slice.call(screen.querySelectorAll('button.slot:not(:disabled)'));
+  tickets.forEach(function (b) {
+    b.addEventListener('click', function () {
+      tickets.forEach(function (s) {
+        s.classList.remove('on');
+        s.setAttribute('aria-pressed', 'false');
+        var m = s.querySelector('.selected-mark');
+        if (m) m.remove();
+      });
+      b.classList.add('on');
+      b.setAttribute('aria-pressed', 'true');
+      var mark = document.createElement('span');
+      mark.className = 'selected-mark';
+      mark.setAttribute('aria-hidden', 'true');
+      mark.textContent = '✓';
+      b.insertBefore(mark, b.firstChild);
+      var area = screen.querySelector('.areaRow > span');
+      area.textContent = '';
+      area.appendChild(document.createTextNode('Delivering to '));
+      var place = document.createElement('b'); place.textContent = 'HSR Layout'; area.appendChild(place);
+      area.appendChild(document.createTextNode(' around '));
+      var time = document.createElement('b'); time.textContent = b.getAttribute('data-time'); area.appendChild(time);
+    });
+  });
+  var theme = document.querySelector('.theme-toggle');
+  theme.addEventListener('click', function () {
+    var root = document.documentElement;
+    var dark = root.getAttribute('data-theme') === 'dark' || (!root.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    root.setAttribute('data-theme', dark ? 'light' : 'dark');
+    theme.textContent = 'Theme: ' + (dark ? 'light' : 'dark');
+  });
+})();
+</script>
