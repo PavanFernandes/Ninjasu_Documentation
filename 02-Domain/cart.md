@@ -27,27 +27,37 @@ Nothing in this doc describes order placement.
 
 ## Rules
 
-### Cart Model — One Active Cart Per Vertical
+### Cart Model — One Active Cart Per Vertical and Fulfilment
 
-Food Ninja is multi-vertical. We support three verticals (cart_types):
+A cart is identified by **user + vertical + fulfilment** (decided 2026-11-15, D1 in
+`07-Roadmap/fulfilment-mode-vertical-design-review.md`; replaces the `SCHEDULE` cart type).
 
-| cart_type | Shop kind        |
+| cart_type (vertical: what is sold) | Shop kind |
 |-----------|------------------|
 | `FOOD`    | Restaurants      |
 | `GROCERY` | Zepto-style      |
 | `PRODUCT` | Ecommerce        |
-| `SCHEDULE`| Restaurants, ordered for a delivery slot today (see "Schedule cart") |
 
-`SCHEDULE` is a fulfilment mode, not a vertical: `CartType.vertical()` maps it to `FOOD`, and
-every vertical rule (GST, commission) reads `vertical()`, never the raw type.
+| fulfilment_type (when it is delivered) | Meaning |
+|---|---|
+| `EAT_NOW` | Deliver now (every vertical; the customer label may differ per screen) |
+| `SCHEDULE` | A delivery slot (see "Schedule cart"); today only `FOOD` |
+
+Every vertical rule (GST, commission) reads `cart_type`; every fulfilment rule (shop limit, availability,
+checkout path) reads `fulfilment_type`. API: `?type=` picks the vertical, `?fulfilment=` (default `EAT_NOW`)
+the fulfilment; responses carry `cartType` and `fulfilmentType`.
 
 Rules:
 
-- A user may have **at most one ACTIVE cart per `cart_type`**.
-- A user **can** have parallel carts across different `cart_type`s simultaneously
-  (e.g. 1 FOOD cart + 1 GROCERY cart at the same time — no conflict).
-- Within a single `cart_type`, only **one shop at a time** (Swiggy/Zepto rule),
-  except `SCHEDULE`, which holds up to the area's `schedule_max_shops_per_cart` shops.
+- A user may have **at most one ACTIVE or LOCKED cart per `cart_type` + `fulfilment_type`**
+  (`idx_one_open_cart_per_user_type_fulfilment`).
+- A user **can** have parallel carts across them
+  (e.g. a FOOD Eat Now cart + a FOOD Schedule cart + a GROCERY cart — no conflict).
+- Every single-cart lookup passes all three keys (`CartSessionRepository.findEatNowCart`,
+  `findScheduleCart`, `findScheduleCartForUpdate`); a lookup by user + `cart_type` alone would pick the
+  wrong one of two FOOD carts.
+- Within one Eat Now cart, only **one shop at a time** (Swiggy/Zepto rule); a Schedule cart
+  holds up to the area's `schedule_max_shops_per_cart` shops.
 - `cart_type` is **permanent** for a session. It is set at session creation from
   `shop.vertical` and can never change.
 - If `shop.vertical` is not yet implemented, default `cart_type` to `FOOD` with
@@ -106,19 +116,21 @@ setting, default 3) for **one area, one service date (today) and one slot**. Bui
   usable unless switched off for Schedule). Max per line is
   `min(app.cart.default-max-line-qty, remainingQty)`.
 - **Price** is the online price, snapshotted at add (same as Eat Now delivery carts).
-- **One live cart per user** (the existing unique index on user + `cart_type`).
+- **One live cart per user** (the unique index on user + `cart_type` + `fulfilment_type`;
+  a Schedule cart is stored as `FOOD` + `SCHEDULE`).
   A live cart on another area, date or slot returns 409. A **dead** cart (date passed,
   slot's last call passed, or slot deleted) is abandoned by the next add, with an `INFO`
   message ("Your 12:30 cart closed and was cleared"). Reads never write.
 - **Lines carry their own `shop_id`**; the session's `shop_id` is NULL for a Schedule cart
   (`chk_cart_sessions_shape`). `cart_items.shop_id` is NULL only on an Eat Now line written
   before 2b.5; read it through `CartItem.shopIdOr(session)`.
-- **Read** (`GET /api/cart?type=SCHEDULE`): `schedule` block `{ areaId, areaName, serviceDate,
+- **Read** (`GET /api/cart?type=FOOD&fulfilment=SCHEDULE`; clear and accept-changes take the same
+  params): `schedule` block `{ areaId, areaName, serviceDate,
   slotId, slotStart, maxShops, state }` with `state` = `OPEN` | `SLOT_CLOSED` | `DATE_PASSED`.
   Money: `subtotal`, `deliveryFee` (area), `packagingFee` (area); `taxTotal` and `taxLines`
   are null and a message says "Taxes are added at checkout" (checkout quotes tax).
-- **Checkout**: `POST /api/orders` and `POST /api/payments/checkout` reject
-  `cartType = SCHEDULE` (400). Schedule checkout is 2b.8.
+- **Checkout**: `POST /api/orders` and `POST /api/payments/checkout` read only the Eat Now cart;
+  a body with `cartType: "SCHEDULE"` is a 400 (not a cart type). Schedule checkout is 2b.8.
 
 #### Schedule errors
 

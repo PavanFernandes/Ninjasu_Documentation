@@ -1,0 +1,224 @@
+{
+  "info": {
+    "name": "B0 - Razorpay manual capture spike (TEST MODE)",
+    "description": "Run with TEST keys only (rzp_test_...). Order matters: run folder 1, pay in checkout.html, run folder 2; then folder 3 (failure) the same way. Each request has tests that print PASS/FAIL against a plan premise.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "basic",
+    "basic": [
+      { "key": "username", "value": "{{key_id}}", "type": "string" },
+      { "key": "password", "value": "{{key_secret}}", "type": "string" }
+    ]
+  },
+  "item": [
+    {
+      "name": "1. SUCCESS path - create order",
+      "item": [
+        {
+          "name": "1a. Create order: capture manual + capture_options (120 min)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.test('P1 order created (capture_options accepted with manual)', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) {",
+                  "  pm.environment.set('order_ok', j.id);",
+                  "  console.log('ORDER (success path):', j.id);",
+                  "  console.log('Echoed order body:', JSON.stringify(j));",
+                  "} else { console.log('FAILED body:', pm.response.text()); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100,\n  \"currency\": \"INR\",\n  \"receipt\": \"b0-ok-{{$timestamp}}\",\n  \"payment\": {\n    \"capture\": \"manual\",\n    \"capture_options\": {\n      \"manual_expiry_period\": 120,\n      \"refund_speed\": \"normal\"\n    }\n  }\n}"
+            },
+            "url": { "raw": "https://api.razorpay.com/v1/orders", "protocol": "https", "host": ["api", "razorpay", "com"], "path": ["v1", "orders"] }
+          }
+        },
+        {
+          "name": "1b. Create order: capture manual, NO capture_options (variant)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('P1b manual without capture_options also accepted (informational)', () => pm.response.to.have.status(200));",
+                  "console.log('1b status', pm.response.code, pm.response.text());"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100,\n  \"currency\": \"INR\",\n  \"receipt\": \"b0-ok-nocapopt-{{$timestamp}}\",\n  \"payment\": { \"capture\": \"manual\" }\n}"
+            },
+            "url": { "raw": "https://api.razorpay.com/v1/orders", "protocol": "https", "host": ["api", "razorpay", "com"], "path": ["v1", "orders"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. SUCCESS path - after paying UPI success@razorpay in checkout.html with order_ok",
+      "item": [
+        {
+          "name": "2a. Fetch order payments: expect status authorized (NOT captured)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "const p = (j.items || [])[0];",
+                  "pm.test('P2 a payment exists on the order', () => pm.expect(p).to.be.an('object'));",
+                  "if (p) {",
+                  "  pm.environment.set('payment_ok', p.id);",
+                  "  pm.test('P3 manual order overrides dashboard auto-capture: status is authorized', () => pm.expect(p.status).to.eql('authorized'));",
+                  "  pm.test('P4 method is upi', () => pm.expect(p.method).to.eql('upi'));",
+                  "  console.log('payment', p.id, 'status', p.status, 'method', p.method, 'captured', p.captured);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "https://api.razorpay.com/v1/orders/{{order_ok}}/payments", "protocol": "https", "host": ["api", "razorpay", "com"], "path": ["v1", "orders", "{{order_ok}}", "payments"] }
+          }
+        },
+        {
+          "name": "2b. Capture the authorized payment: expect captured",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('P5 capture accepted', () => pm.response.to.have.status(200));",
+                  "pm.test('P5 status captured', () => pm.expect(pm.response.json().status).to.eql('captured'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"amount\": 100, \"currency\": \"INR\" }" },
+            "url": { "raw": "https://api.razorpay.com/v1/payments/{{payment_ok}}/capture", "protocol": "https", "host": ["api", "razorpay", "com"], "path": ["v1", "payments", "{{payment_ok}}", "capture"] }
+          }
+        },
+        {
+          "name": "2c. Capture AGAIN: expect 400 already captured",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('P6 second capture is 400', () => pm.response.to.have.status(400));",
+                  "const d = (pm.response.json().error || {}).description || '';",
+                  "pm.test('P6 description says already captured', () => pm.expect(d.toLowerCase()).to.include('already been captured'));",
+                  "console.log('2c error:', pm.response.text());"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"amount\": 100, \"currency\": \"INR\" }" },
+            "url": { "raw": "https://api.razorpay.com/v1/payments/{{payment_ok}}/capture", "protocol": "https", "host": ["api", "razorpay", "com"], "path": ["v1", "payments", "{{payment_ok}}", "capture"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. FAILURE path - create order, then pay with UPI failure@razorpay",
+      "item": [
+        {
+          "name": "3a. Create order (same body as 1a)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('order created', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) { pm.environment.set('order_fail', pm.response.json().id); console.log('ORDER (failure path):', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100,\n  \"currency\": \"INR\",\n  \"receipt\": \"b0-fail-{{$timestamp}}\",\n  \"payment\": {\n    \"capture\": \"manual\",\n    \"capture_options\": { \"manual_expiry_period\": 120, \"refund_speed\": \"normal\" }\n  }\n}"
+            },
+            "url": { "raw": "https://api.razorpay.com/v1/orders", "protocol": "https", "host": ["api", "razorpay", "com"], "path": ["v1", "orders"] }
+          }
+        },
+        {
+          "name": "3b. (after failed payment) Fetch order payments: expect failed",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const items = pm.response.json().items || [];",
+                  "const p = items[0];",
+                  "pm.test('P7 a payment exists', () => pm.expect(p).to.be.an('object'));",
+                  "if (p) {",
+                  "  pm.environment.set('payment_fail', p.id);",
+                  "  pm.test('P7 status is failed', () => pm.expect(p.status).to.eql('failed'));",
+                  "  console.log('payment', p.id, 'status', p.status, 'error', p.error_code, p.error_description);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "https://api.razorpay.com/v1/orders/{{order_fail}}/payments", "protocol": "https", "host": ["api", "razorpay", "com"], "path": ["v1", "orders", "{{order_fail}}", "payments"] }
+          }
+        },
+        {
+          "name": "3c. Try to capture the failed payment: expect 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('P8 a failed payment cannot be captured (4xx)', () => pm.expect(pm.response.code).to.be.within(400, 499));",
+                  "console.log('3c error:', pm.response.text());"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"amount\": 100, \"currency\": \"INR\" }" },
+            "url": { "raw": "https://api.razorpay.com/v1/payments/{{payment_fail}}/capture", "protocol": "https", "host": ["api", "razorpay", "com"], "path": ["v1", "payments", "{{payment_fail}}", "capture"] }
+          }
+        }
+      ]
+    }
+  ]
+}
