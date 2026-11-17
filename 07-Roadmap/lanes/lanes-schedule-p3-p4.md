@@ -84,7 +84,7 @@ Orchestrator (one Opus session, not a lane): open decisions, the batch geld, mer
 
 | From | Need | Owner | Status |
 |---|---|---|---|
-| — | — | — | — |
+| Lane 2 (4.3b-ii judge F5) | Checkout request should carry a server-issued cart version or quote token, and the server should refuse a changed cart, so a price confirmation binds to the quoted cart not just the total (today another device could change the cart to the same total while the "Pay ₹X" dialog is open). Samivan decides (a) hand-off or (b) accept the risk | Lane 1 (backend) | DONE 2026-11-16 by Samivan's call (Lane 1 idle): backend PR #95 (10dde76) `schedule.version` on the cart read + optional `expectedCartVersion` on checkout + `CART_CHANGED` 409; app PR #45 (edaed98) sends it and keeps the first-tap version across a price-change retry. Full suite 2685 green, 4/4 mutants killed. Older app or server: no version, no check |
 
 ## Status
 
@@ -98,7 +98,7 @@ Orchestrator (one Opus session, not a lane): open decisions, the batch geld, mer
 | 3.2-3.5 | 1 | queued | | 3.2 waits on OD4 |
 | 4.1 | 2 | merged | app PR #38 (9bd6536) | tsc, lint, 321 jest green; Codex review + /judge (focused, 7 lenses) done and fixed; device test pending (needs a seeded area); HomeScreen split deferred to the next Home change; OD3 app CI still unanswered |
 | 4.2 | 2 | merged 2026-11-15 | app PR #39 (a225fcb into feature/schedule) | tsc, lint, 460 jest green; Codex review + /judge (full, ungraded: reuse and conventions lenses rejected twice) fixed; device test pending (needs a seeded area with a Schedule menu); open: second option set for a dish already in the cart, Schedule imports AddonSheet and getMenuItem (RN-STRUCT-02 needs a written decision) |
-| 4.3 | 2 | E3 merged (app PR #40): 4.3a ready to start (new session), then 4.3b, 4.3c | | plan: schedule-phase4-app-implementation-plan.md Phase 3; reuse PaymentConfirmingNotice |
+| 4.3 | 2 | 4.3a merged (app #41). 4.3b-i built + committed locally 2026-11-15 (66efab1 on `feature/schedule-4.3b-i-checkout`, PR #43 MERGED into feature/schedule, f71524c): checkout service/flow/hook, shared `src/lib/razorpay.ts`, `buildDeliveryAddress`; tsc clean, 654 jest green, Codex review + `/judge full` (7 lenses, 3 on Codex) C+ as judged, 10 findings fixed after. Open: F2 migrate `useOnlinePayment` to the shared opener after B2; F4 cross-feature import awaiting confirmation; F6 lint boundary rule; `skills/code_map.md` row left uncommitted (shares the file with Lane 1's rows). 4.3b-ii built + committed locally 2026-11-16 (71a9ebe + fix ce7fdcb on `feature/schedule-4.3b-ii-refusals`, PR #44 open into feature/schedule, not merged): refusal copy + handler, "Pay ₹X" retry with the server's new total; 691 jest green, Codex review (1 of 2 findings fixed, the other declined). Next: PR it, then 4.3c. 4.3c built + committed locally 2026-11-16 (efb8611 on `feature/schedule-4.3c-recovery`, not pushed, no PR yet): launch recovery reads the stored checkout's group and offers View order / Pay now / Cancel order; tsc clean, 743 jest green, mutation 8/8; no Codex or judge yet | app #41 | plan: schedule-phase4-app-implementation-plan.md Phase 3; reuse PaymentConfirmingNotice |
 | 4.4 | 2 | queued | | |
 
 ## Brief — Lane 1 (payments, then ops board)
