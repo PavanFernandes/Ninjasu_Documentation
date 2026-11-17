@@ -184,7 +184,7 @@ Money path on the client. Gate: **E3 merged** (Lane 1's "Confirming payment" com
 - Device checklist for Samivan: toggle, intro once, each state, add (plain + customizable), each refusal, cart, price change, sold out, pay, dismiss, kill-app, cancel, late cancel, Eat Now still works.
 - Copy pass against principle 4 (no "slot", "last call", "checkout" jargon).
 
-**Wave check, app part (2026-11-17):** copy pass clean (74 files scanned; only "held" in the unfinished-payment prompt is borderline). Device checklist: [schedule-phase5-device-checklist.md](./schedule-phase5-device-checklist.md). Codex read-only review of the combined 4.1 to 4.4 diff plus backend #95/#96, none fixed yet: (1) High: an entry with no group id (app killed after the checkout request was sent, before the response was stored) is ignored by launch recovery while the server cart is LOCKED with no payable total, so Pay is disabled until the hourly sweep; (2) High: the recovery dialog is not bound to the signed-in session it started in (resumeCheckout reads the current owner); (3) Medium: one device-wide storage key, so customer B overwrites customer A's unresolved entry; (4) Medium: a paid result clears the entry before the cart reload and navigation; (5) Medium: the Razorpay timeout ignores the time spent on the extra group read (up to 30 s); (6) Low: the cart header Back button is not blocked while checking. Verified by reading the code: 1, 5, 6 hold; 2 and 4 are small windows; 3 matters only on shared devices. `/judge quick --base ecd2061` is for Samivan to run.
+**Wave check, app part (2026-11-17):** copy pass clean (74 files scanned; only "held" in the unfinished-payment prompt is borderline). Device checklist: [schedule-phase5-device-checklist.md](./schedule-phase5-device-checklist.md). Codex read-only review of the combined 4.1 to 4.4 diff plus backend #95/#96, none fixed yet: (1) High: an entry with no group id (app killed after the checkout request was sent, before the response was stored) is ignored by launch recovery while the server cart is LOCKED with no payable total, so Pay is disabled until the hourly sweep; (2) High: the recovery dialog is not bound to the signed-in session it started in (resumeCheckout reads the current owner); (3) Medium: one device-wide storage key, so customer B overwrites customer A's unresolved entry; (4) Medium: a paid result clears the entry before the cart reload and navigation; (5) Medium: the Razorpay timeout ignores the time spent on the extra group read (up to 30 s); (6) Low: the cart header Back button is not blocked while checking. Verified by reading the code: 1, 5, 6 hold; 2 and 4 are small windows; 3 matters only on shared devices. `/judge quick --base ecd2061` is for Samivan to run. **Fixed in #48 (2026-11-17): findings 1, 2, 4, 5 and 6. Deferred: finding 3 (one device-wide storage key; matters only on a shared device).**
 - Fixes land as small PRs into `feature/schedule`.
 
 ## Merge order and hand-offs
@@ -220,7 +220,8 @@ Hand-offs to raise to Lane 1 if met: a "move cart to another time" endpoint (onl
 | 4.4 | #47 | merged 2026-11-16 |
 | Wave fixes | #48 | merged 2026-11-17 |
 | Wave check | | app part run 2026-11-17 (Codex done, findings above; /judge quick waits for Samivan); backend/web part waits for Lane 1 3.2 to 3.5 |
-| Structure fixes PR1 | #49 | pushed 2026-11-17 (e846bbe), waiting for /judge and merge; PR2 to PR4 queued (see Structure fixes series) |
+| Structure fixes | #49 to #55 | all merged 2026-11-17 and 2026-11-18 (see Structure fixes series). `/judge` and device tests were not run before these merges |
+| **Phase 4 overall** | | **Built and merged** (4.1 to 4.4, wave fixes, structure fixes; all in `feature/schedule`). **Not yet verified:** nothing has run on a device, `/judge quick --base ecd2061` is still Samivan's to run, and the backend/web part of the wave check waits for Lane 1 (3.2 to 3.5). Next: debug build and device round B2, then the deferred items below |
 
 ## Structure fixes series (decided 2026-11-17, from `/judge quick` run 24 and `/judge full` run 25)
 
@@ -228,10 +229,12 @@ Samivan delegated the decisions ("ideal, scalable, fixes future issues"). Branch
 
 | PR | What | Status |
 |---|---|---|
-| 1 (#49 `schedule-shared-menu`) | menu types + `getMenuItem` into src/shared, re-exported from the old modules; judge run 25 = B | pushed; F1, F2, F3, F4 done in e846bbe; waiting for Samivan's `/judge` and merge |
-| 2 | split `AddonSheet` into a cart-agnostic shared sheet + an Eat Now wrapper; add a source-scan test so src/features/schedule imports no other feature (one allowed exception: orders getScheduleGroup) | queued; hold the merge for Samivan (Eat Now add flow) |
-| 3 | one money formatter; props-driven `OrderModeToggle` and `useOrderModeSwitch`; rename `shared/utils/scheduleFormat.ts`; one `deviceTimeZone` | queued |
-| 4 | one reason-code copy table; checkout orchestration out of `hooks/useScheduleCheckout.ts` into `checkout/scheduleCheckoutResolve.ts`; dialog texts into `scheduleRefusalCopy` | queued |
+| 1 (#49 `schedule-shared-menu`) | menu types + `getMenuItem` into src/shared, re-exported from the old modules; judge run 25 = B | merged 2026-11-17 (d0a00b1) |
+| 2 (#50, #51) | split `AddonSheet` into a cart-agnostic shared sheet + an Eat Now wrapper; add a source-scan test so src/features/schedule imports no other feature (one allowed exception: orders getScheduleGroup); #50 is the CLAUDE.md error-contract fix | merged 2026-11-17 (#51 2d53676). Still owed: `/judge full`, device test of the Eat Now and Schedule add flows |
+| 3 (#52, #55) | one money formatter; `OrderModeToggle` and `useOrderModeSwitch` moved into `features/home` (not made props-driven: one caller, and both hold Schedule knowledge: the labels and the intro route); rename `shared/utils/scheduleFormat.ts` to `dateTimeFormat.ts`; one `deviceTimeZone` | merged 2026-11-18: #52 (0232525) formatter, time zone, rename; #55 (33c2fba) toggle and hook move |
+| 4a (#53) | one reason-code copy table `schedule/scheduleReasonCopy.ts` (a table per surface, wording unchanged); `UNFINISHED_TITLE` used in the checkout hook | merged 2026-11-18 (02a3785) |
+| 4b (#54) | checkout orchestration and the one app-wide checkout lock out of `hooks/useScheduleCheckout.ts` into `checkout/scheduleCheckoutResolve.ts`; devil's advocate first | merged 2026-11-18 (d66ae34). Lock mutation check 10/14, then 3 of the 4 survivors closed by new tests (the fourth is an equivalent mutant); read-only Codex review clean. Still owed: `/judge`, device test of checkout and recovery |
+| 4c (not built) | the inline dialog texts in `scheduleCheckoutResolve.ts` into `scheduleRefusalCopy` (copy only) | optional, own small PR |
 
 PR3 and PR4 update [`01-Architecture/shared-helpers.md`](../01-Architecture/shared-helpers.md) in the same change: the new owners (money display, device time zone, reason-code text), the copies removed, and any copy kept on purpose under Intentional variants with its reason.
 
