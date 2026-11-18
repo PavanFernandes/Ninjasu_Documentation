@@ -39,6 +39,9 @@ Census 2026-11-17 triaged by the Lane 1 fix (branch `web-shared-helpers`). Share
 | list error text | `src/shared/api/errors.ts` `getListErrorMessage(error, noun)` | 403 names the permission; else the server or Error message; else a load-failed text with the noun | `getErrorMessage` x3 (shops, delivery zones, riders) |
 | time of day | `src/features/shop/utils/auditTime.ts` `formatTime(ms, zone = IST)` | "3:45 pm"; `null` zone uses the viewer's own time zone | `formatTime` in `CounterSaleSalesList` (device zone, passes `null`) |
 | calendar date (YYYY-MM-DD) | `src/features/shop/utils/reportFormat.ts` `formatDate(iso)` | "27 Nov 2026" in en-IN, no UTC shift; text that is not a date comes back unchanged | `formatPurchaseDate` x2, `FoodCostCard.formatDay` (now en-IN instead of the viewer's locale) |
+| service date in an area's zone | `features/admin/services/service-area.utils.ts` `todayInZone(zone, nowMs)` | "YYYY-MM-DD" via `Intl` in that zone; a zone the browser does not know gives null (any other failure throws); the caller must stop, never write a null as a pause | none |
+| service-area error text | `features/admin/services/service-area.errors.ts` `normaliseAreaError(error, fallback)` | The five backend error shapes (bean 400, domain 400, admin 409 code map, unreadable body, message-only) become `{fields, form, conflict}`; `errorText` / `slotRuleText` pick what each screen shows | none |
+| default time zone for a service area | `service-area.utils.ts` `DEFAULT_ZONE` | "Asia/Kolkata": first in the zone select and the start value of a new area | none |
 
 Intended output changes in the same PR: POS amounts now group thousands ("₹1,250", was "₹1250"); a negative round-off prints "₹0" instead of "₹-0"; purchases amounts with one decimal print two ("₹300.50", was "₹300.5"); `FoodCostCard` dates use en-IN.
 
@@ -53,6 +56,8 @@ Intended output changes in the same PR: POS amounts now group thousands ("₹1,2
 | `formatEventStamp` in `shop/DeliveryTimelineDialog.tsx` | ISO input, viewer's locale and time zone, shows day and month with the time. |
 | `formatDayMonth` in `purchases/PriceHistoryPanel.tsx` | Day and month only, no year, in the viewer's locale. |
 | `show` in `shop/utils/auditDescribe.ts` | Stringifies objects with JSON; `display` does not. |
+| `toAreaTimeInput` in `admin/services/service-area.utils.ts` | Keeps non-zero seconds (a full-replace save must not drop them); `toTimeInput` in `shop-form.utils.ts` always cuts to `HH:mm`. |
+| green on/off badge classes in the service-area list | Sixth copy of the same classes across the repo. A shared status badge replacing all six is its own PR (Judge 2026-11-18, F2). |
 
 ## Backend (ninja delivery service java)
 
