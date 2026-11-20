@@ -95,3 +95,9 @@ Per group: which shop is not READY yet and since when (per-order `ready_at`, "-"
 
 1. **MODEL-1:** store `ready_at` on `orders` (A), derive from audit (B), or defer ready-since? Recommended: A.
 2. **ENV-4:** still open (Postgres version, backup/PITR, rehearsal copy). It blocks running this SQL as well as the batch SQL; both can go in one rehearsal.
+
+### 3.4e build notes (2026-11-20)
+
+- Built and committed (backend `feature/schedule-ops-board-read`, web `feature/schedule-ops-board`). `db_manual/schedule-ready-at-migration.sql` is written and NOT run.
+- Correction found by the Codex review: the app runs with `spring.jpa.hibernate.ddl-auto=update`, so Hibernate adds a plain nullable `orders.ready_at` itself at boot, before `ScheduleSchemaGuard` runs. An out-of-order deploy therefore still boots; the "every order query fails" risk in MIG-1 above is smaller than written. The SQL file stays the cleaner path (explicit `lock_timeout`, comment, rehearsal), and a column-only guard entry cannot prove the SQL ran. The SqlConsistency test lists this file in its column-only exemption.
+- Open from review (Low): a DB test that calls the real `markMemberReady` and checks the stamp survives a retry (the current DB tests seed `readyAt` directly), a DEBUG log when an existing stamp is preserved.
