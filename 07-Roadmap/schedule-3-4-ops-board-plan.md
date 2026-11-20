@@ -54,3 +54,44 @@ Each slice: `/gcp` first, a build by one model and a cross-review by the other (
 - 3.4c needs no table, so it needs no `/geld`; it is a new read service in the Schedule module and joins only Schedule data and the rider repository (no cross-domain service call).
 - Money and state: 3.4g only. 3.4c to 3.4f are reads and one timestamp.
 - The 2026-11-20 focused judge run on the web slice (correctness C+, performance B, ui A-, tests C+) is recorded in the rulebook history; F6 (per-batch requests) is closed by 3.4c.
+
+## 3.4e data model review: ready-since (geld, 2026-11-20)
+
+Status: **PROPOSED, awaiting Samivan's decision.** No SQL, migration or entity until APPROVED.
+
+### What exists (read from the code, 2026-11-20; live DB not read)
+
+- A Schedule order becomes READY in exactly one place: `ScheduleCancelServiceImpl.markMemberReady` (`transition(order, READY)`, line ~127). `OrderServiceImpl.updateOrderStatus` routes Schedule members there (line ~341); Eat Now and POS orders use other paths and are out of scope. `ScheduleMemberTransitions` allows ACCEPTED -> READY and nothing leaves READY, so the first READY is the only READY.
+- `orders` has NO status timestamps (only `release_at`). `markMemberReady` already writes an `audit_events` row (`schedule.member_ready`, `occurred_at` epoch ms, immutable by trigger), but every `audit_events` index leads with `shop_id` (`idx_audit_shop_time`, `_root`, `_actor`, `_module`), and a board read spans the several shops of a group.
+- Time convention in this codebase: epoch milliseconds as `bigint` (`orders.release_at`, `audit_events.occurred_at`, batch events).
+
+### Finding MODEL-1 (must change before the board can show ready-since)
+
+Ready-since is an operational fact the board needs per order, and the order row is the row that owns it. Deriving it from the audit log (option B) would need a multi-shop lookup on `entity_id` + `action` that no existing index supports, and ties an operational screen to an audit feature's retention and shape. Recommended: store it on the order (option A).
+
+| Option | Design | Cost | Verdict |
+|---|---|---|---|
+| **A (recommended)** | `orders.ready_at bigint NULL`, set once in `markMemberReady` (only when null), read for free because the board already loads the orders of each group | 1 nullable column, metadata-only `ADD COLUMN` on Postgres (no rewrite, no lock beyond a brief catalog lock), 1 line in the writer, 1 entity field, 1 DTO field, 1 schema-guard entry; no backfill needed (older orders show "-") | recommended |
+| B | derive from `audit_events` where `action='schedule.member_ready'` | no schema; needs a new index or a per-shop query loop; couples the board to audit retention | rejected |
+| C | a `schedule_order_events` table | a new table for one timestamp; over-built | rejected |
+
+Name and semantics: `ready_at` = "when a Schedule order first reached READY", set only by `markMemberReady`; null for orders that never reached READY and for every non-Schedule order. The column comment in the SQL says so (a half-filled generic column is a trap: EVOL-1). Optional backfill later from `audit_events` for orders readied before the deploy: not required, since only today's board matters.
+
+### Deploy order (MIG-1, the real risk)
+
+`orders` is the hottest entity: once `Order.readyAt` is mapped, every order query fails if the column does not exist in the database. So the SQL runs BEFORE the backend that maps it is deployed, and a `ScheduleSchemaGuard` entry makes the backend refuse to boot without it (same as the batch tables). DO NOT RUN, sketch for review:
+
+```sql
+-- DO NOT RUN — sketch for review (3.4e)
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS ready_at bigint;
+COMMENT ON COLUMN public.orders.ready_at IS 'Epoch ms the Schedule order first reached READY (set by markMemberReady); null otherwise';
+```
+
+### Shown on the board (after the column exists)
+
+Per group: which shop is not READY yet and since when (per-order `ready_at`, "-" when null); per unbatched group and per batch member: the latest ready-since of its orders and the oldest still-waiting order; feeds the STATE-4 warning.
+
+### Decisions for Samivan
+
+1. **MODEL-1:** store `ready_at` on `orders` (A), derive from audit (B), or defer ready-since? Recommended: A.
+2. **ENV-4:** still open (Postgres version, backup/PITR, rehearsal copy). It blocks running this SQL as well as the batch SQL; both can go in one rehearsal.
