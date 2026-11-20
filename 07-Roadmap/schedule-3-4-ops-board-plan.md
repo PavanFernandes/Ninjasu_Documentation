@@ -57,7 +57,7 @@ Each slice: `/gcp` first, a build by one model and a cross-review by the other (
 
 ## 3.4e data model review: ready-since (geld, 2026-11-20)
 
-Status: **PROPOSED, awaiting Samivan's decision.** No SQL, migration or entity until APPROVED.
+Status: **APPROVED 2026-11-20 (Samivan chose option A: `orders.ready_at`).** SQL file may be written; it is NOT run until ENV-4 is answered and the SQL is rehearsed. Board shape: per group `readySince` (when the group became ready, null while any live shop is still packing) and per shop `{shopId, shopName, orderCount, readyCount, readySince}` (readySince = latest `ready_at` of that shop's live orders once all are ready, else null).
 
 ### What exists (read from the code, 2026-11-20; live DB not read)
 
