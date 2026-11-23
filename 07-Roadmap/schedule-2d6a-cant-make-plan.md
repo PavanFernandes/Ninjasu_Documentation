@@ -342,3 +342,26 @@ Open risks:
 - **Close a failed refund:** a held FAILED ticket-issue refund keeps its cap until an admin retry replaces it. If an admin abandons it the cap is held forever. Needs a "close failed refund" rule (own small slice).
 - **Browser check:** the ops Problems queue and the shop Can't make dialog were built from types, lint and pure specs only.
 - **Not in 3.4:** 2d.6b (ticket fan-out, ops cancel, labels data, contract freeze fixtures).
+
+## 10. Close a failed refund: data model review (geld, 2026-11-23)
+
+Status: FINAL (Samivan approved 2026-11-23: D1 marker on link table, D2 note required, D3 admin + manager with `can_issue_refunds`; branch `feature/schedule-close-failed-refund` off `feature/schedule-3.4`). Lenses run: 0 environment, 1 scenarios, 2 naming, 3 constraints, 4 concurrency, 6 money/state, 9 access. Skipped: tenancy, PII, search, cost (no new data kind). Not run: Codex, reference designs (small slice).
+
+**Built state.** (a) code: `RefundOpenSql.OPEN` holds a FAILED refund when it has a `schedule_ticket_issue_refunds` link and no retry child; `PaymentRefundServiceImpl.retry` replaces the held row (`holdsCapWhileFailed`). (b) deployed: nothing (2d.6a is on `feature/schedule-3.4`, no production deploy). (c) SQL: the link table exists on Neon (Samivan ran the 2d.6a SQL); the new columns do not. (d) no client reads them. Cost to change now: cheap.
+
+**Verified facts.** FAILED is terminal: `RefundWebhookHandler.java:95` ignores any event for a FAILED row, and unknown submit outcomes stay SUBMITTING (`PaymentRefundSubmitter`), so a closed row cannot come back to life. Settlement already ignores FAILED rows (`GroupExceptions.java:39`). A failed retry child is NOT in the link table, so it releases the cap by itself: only a FIRST failure (root, no retry yet) can be held forever.
+
+| id | kind | finding | change |
+|---|---|---|---|
+| MODEL-1 | keep | A close is a fact about the ticket-issue link, not about refunds in general. Marker on `schedule_ticket_issue_refunds` touches no status switch; a new `RefundStatus.CLOSED` would touch settlement, webhook, summaries, CHECKs. | `closed_at timestamptz`, `closed_by_user_id uuid`, `close_note text` (all three set together or all null; note 1..500 chars). Nullable ADD COLUMN, no backfill. |
+| MONEY-1 | must | `retry` of a closed row would see `held=false`, cap the full amount as new money, and could double-refund after ops paid manually. | `retry` refuses a closed row; `close` refuses a row that has a retry child; both inside `RefundSubjectLocks.lock` (same lock as retry), state re-read after the lock. |
+| ACCESS-1 | must | A manager could pass another area's refund id (IDOR). | Route `POST /api/ops/groups/{groupId}/refunds/{refundId}/close`; load the refund, require `refund.orderGroupId == groupId` and a link row, then `ManualRefundAccess.requireIssuer(groupId)` (admin, or manager with `can_issue_refunds`). |
+| AUDIT-1 | must | Releasing a money cap needs a trail. | `@PlatformAuditedEndpoint` + new `PlatformAuditAction.SCHEDULE_TICKET_ISSUE_REFUND_CLOSED`, note stored in the row. |
+| STATE-1 | must | Double click / two actors. | Already closed: return the stored view, no second audit (idempotent). |
+| MONEY-2 | revisit | After a close the customer is still unpaid; only the manual refund form can pay. | Refund history marks the row `closed`; web shows "Close" on a FAILED ticket-issue row and a hint to use the refund form. Web slice after the backend. |
+| INV-1 | revisit | Hold rule is uneven: first failure holds, a failed retry releases silently. Outcome is the same as a close, so benign; unify only if ops is confused. | None now. |
+| API-1 | must | The close note is free text: reuse `TicketIssueNoteGuard` (no phone, email). | Reuse. |
+
+**Final Codex review (2026-11-23).** Fixed: a held FAILED ticket-issue refund now holds the settlement payout (`RefundPositionCalculator`, `SettlementModel.Refund.heldWhileFailed`); web request ids survive a closed dialog (refund form and Can't make). ACCEPTED, not fixed: (a) if the first refund fails and its admin retry also fails, the retry row has no link, so its cap releases without a close and the customer is paid through the manual refund form (the failure is audited and raises an attention event); (b) after A's refund was closed unpaid, approving B's removal that would empty the group is refused ("group fees require every member to be covered") until ops pays A through the manual refund form first. Revisit (b) if ops hits it: either pay A first or let the approval carry A's balance.
+
+**Decisions for Samivan.** D1 marker on the link table (recommended). D2 close requires a note (recommended). D3 access admin + manager with `can_issue_refunds` (answered). Then SQL file `db_manual/schedule-close-failed-refund-migration.sql` + boot-guard entries.
