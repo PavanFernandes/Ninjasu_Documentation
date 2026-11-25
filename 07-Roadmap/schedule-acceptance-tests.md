@@ -7,8 +7,8 @@ status: ready
 apps: [backend, web, customer, rider]
 module: "schedule"
 anchors: []
-verified_against: "schedule-plan.md items #1-#41, design review P1-P17 (2026-10-15)"
-updated: 2026-10-30
+verified_against: "schedule-plan.md items #1-#41, design review P1-P17 (2026-10-15); phases 1-2 admin test round TR-01 to TR-18 (2026-11-24)"
+updated: 2026-11-24
 review: schedule-design-review.md
 ---
 
@@ -57,6 +57,51 @@ Companion to [schedule-implementation-order.md](schedule-implementation-order.md
 | T2a-14 | Every admin mutation writes a `platform_audit_events` row; an unaudited mutator fails the build | I | D8 |
 | T2a-15 | Boot guard: missing table or column fails startup with a message naming it | I | rules |
 
+## Phases 1-2 test round (2026-11-24, admin service areas, run on a test area through the admin web and a backend run by Claude)
+Status: **DONE** = executed and passed, **FIXED** = a bug found and fixed, **OWED** = not written or not run yet.
+Database: the round ran against the single Neon database, which is production (local dev has no separate database; rule 4 forbids race tests there, so none were run: the race cases below are OWED on a scratch Postgres). Writes were limited to one test area, `ZZ-TEST-DELETE-ME` (id 31288f8b-c844-4db6-8852-ad728d1a675c): Schedule off, no shops, so no customer can order from it. It was NOT removed: its slots 12:00 and 12:50 and the inactive 14:00 hold append-only freeze rows written before the fix, so it cannot be fully cleaned up. Remove or reuse it deliberately.
+| ID | Case | Lvl | Status |
+|---|---|---|---|
+| TR-01 | Admin login: phone, password, SMS OTP; missing `PLATFORM_ADMIN_USER_IDS` or password hash disables admin login (startup log says so) | M | DONE |
+| TR-02 | Area create and edit: range checks (blank name, latitude, longitude, radius 0, fee 0 to 10, 1 to 20 restaurants per cart, advance days 0 or 1) refused with a field message | E | DONE |
+| TR-03 | Slots: add, duplicate start, capacity 0, window opening after the first last call, capacity edit, deactivate | E | DONE |
+| TR-04 | Modes: both off refused; Schedule on and off each show a confirm dialog; cancel freeze and late-cancel grace changes show a confirm dialog; clearing those two fields stores null (unset) | E | DONE |
+| TR-05 | Pause today and Resume write `pausedOn` through a confirm dialog | E | DONE |
+| TR-06 | Stale edit in a second tab returns 409 and the form shows the "changed by someone else" text | E | DONE |
+| TR-07 | HTML in the area name is shown as text, never rendered; admin endpoints answer 401 without a token | E | DONE |
+| TR-08 | 12 admin pages open with no failed API call and no console error (Google Maps key error on localhost excluded) | E | DONE |
+| TR-09 | An unused slot stays deletable after its last call passed (the freeze tick must not write rows for a slot-day nobody held) | U, I | FIXED: tick row check; `ScheduleFreezeTickTest` (8) and `ServiceAreaSlotDeleteGuardDbTest` (4, real PostgreSQL); verified live |
+| TR-10 | Hold committed after last call by a transaction that started before it: the tick looks again after 90 s and freezes the day | U | FIXED (Codex High); `rowCommittedJustAfterLastCallIsFoundOnTheRecheck` |
+| TR-11 | Freeze lookup fails: the tick keeps the CATCHUP label and retries on the next tick | U | FIXED; `failedLookupKeepsCatchupAndRetriesOnTheNextTick` |
+| TR-12 | Not a separate case: tracked as T2d-06a (freeze and payment confirm race, both orders, two real database sessions). Close it there | I | OWED (see T2d-06a) |
+| TR-13 | Two backend instances run the tick at once: one marker, one publication set | I | OWED (needed before a second instance runs) |
+| TR-14 | Catch-up after a restart across midnight: policy for a missed freeze on a past service date (publish tickets or not) | U | OWED, needs a product decision first |
+| TR-15 | Shop assign, move and remove on a test area; a SHOP-role token gets 403 on admin endpoints (T2a-08) | E | OWED, needs a shop-owner login and one real shop |
+| TR-16 | After creating an area the page opens the area page (the `router.push` to the saved area in the `!isEdit` branch of the save success handler in `Ninjasu_Web/src/features/admin/hooks/useServiceAreaForm.ts`); needs a second test area | E | OWED |
+| TR-17 | Pricing, holds, group payment and refunds through the customer app with a real Razorpay round (device checklist `schedule-phase5-device-checklist.md`) | M | OWED, device round |
+| TR-18 | Admin flows above as a repeatable Playwright spec (login needs a real OTP, so it needs a test admin with a fixed OTP provider on a test database first) | E | OWED |
+
+## Phase 4 device round (2026-11-25, customer app on a Samsung SM-S721B, Android 17, against a scratch database)
+Database: a local scratch Postgres seeded with a test area `ZZ-BTM-PHONE-TEST` and two shops copied from production (setup in `Food Ninja/.scratch-stack/README.md`); nothing was written to Neon. No payment was made (Razorpay test mode not confirmed).
+| ID | Case | Status |
+|---|---|---|
+| PD-01 | Login with phone + real SMS OTP; wishlist loads (was a 500: `ORDER BYa` SQL) | FIXED + DONE; wishlist WITH an item DONE 2026-11-25 |
+| PD-02 | T4-01 (part): area with Eat Now and Schedule on shows the mode toggle | DONE 2026-11-25: Schedule-only FIXED (app ignored `eatNowEnabled`; now opens in Schedule, no toggle), Eat Now-only and outside-any-area DONE |
+| PD-03 | Slot first, then restaurants; order-by times and countdown per slot | DONE |
+| PD-04 | T4-02: restaurant past its order-by is greyed WITH the reason | FIXED (reason line added) + DONE |
+| PD-05 | T4-03: sold-out dish greyed; reappears after restock on refresh | DONE |
+| PD-06 | T4-04 (part): two-restaurant cart, itemized, one bill and one Pay (510 + 8 + 5 + 25.50 + 0.50 = 549) | DONE; `PRICE_CHANGED` dialog DONE 2026-11-25 ("Your total changed… New total ₹381 (was ₹349)", line shows was/now) |
+| PD-07 | Cart address re-check: Pay only after the server confirms the address is inside the cart area; outside shows a banner + Change address | DONE; real address picker DONE 2026-11-25 (saved Doddakannelli address -> "Scheduled delivery isn't available at this address" + Change address; back inside -> Pay with UPI) |
+| PD-08 | No meal word in customer text ("Scheduled · Today", "Order ahead", "Delivery around…", "Schedule cart") | DONE on home, list and cart; other screens OWED |
+| PD-09 | Lifecycle: Home and resume, Back, cold restart keeps login and cart; no crash | DONE (cold start opens Eat Now, not the last mode) |
+| PD-10 | Backend unreachable: no crash, recovers without restart | DONE; Orders error state DONE 2026-11-25 ("This is taking longer than usual" + Retry after 30 s; Retry reloads once the backend is back) |
+| PD-11 | Small display 720x1280 | DONE |
+| PD-12 | Font size 1.3 on a clean start (Schedule home, cart, Eat Now list) | FIXED + DONE; 1.5 DONE 2026-11-25 (cap holds; restaurant tab labels FIXED to stay on one line; address form inputs fine; map picker Confirm button FIXED off the nav bar) |
+| PD-13 | Bill rupee sign matches the total (Schedule and Eat Now carts) | FIXED + DONE |
+| PD-14 | Frontend log clean (Firebase deprecation warnings gone) | FIXED + DONE |
+| PD-15 | T4-05, T4-06, T4-07, push notifications, permission paths | DONE 2026-11-25 with Razorpay test card: T4-05 (paid inside the hold = booked, by design), T4-06 (cancel before deadline + refund raised; hidden after deadline), T4-07; location deny + allow DONE (deny shows "Choose a delivery address"); push OWED (test-key backend runs with Firebase off) |
+| PD-16 | T4-08 slot closes when no restaurant can take orders; T4-09 Eat Now cart total = Razorpay amount; refund headline = full refund | FIXED + DONE 2026-11-25 (₹377 cart = ₹377 Razorpay; "Refund initiated · ₹349"; "Order by" takes the restaurant cutoff; "Ordering closed" on both cards) |
+
 ## Phase 2b — Orders, groups, payment, reservations
 | ID | Case | Lvl | Traces |
 |---|---|---|---|
@@ -73,7 +118,7 @@ Companion to [schedule-implementation-order.md](schedule-implementation-order.md
 | T2b-11 | Checkout re-prices from the server; if an online price (dish or add-on option) changed since the cart, `PRICE_CHANGED` is returned with new totals and the payment is not created until the customer reconfirms; the order snapshots the confirmed price | I | C18 |
 | T2b-12 | Two-restaurant checkout creates one group and two orders coded `XXXX-A`, `XXXX-B`; codes unique per area and date; a retried checkout creates no second group | I | #30, #31 |
 | T2b-13 | **(invariant)** Group payment: verify-first, webhook-first, duplicate and concurrent confirms produce one confirmation; each member reserved once; **no live stock ledger write and no `OrderPlacedEvent`** | I | P14, C15 |
-| T2b-14 | Capture after cutoff: full refund. One dish sold out between checkout and payment: partial refund, the rest proceeds. Every dish fails: full refund including the delivery fee | I | #34 |
+| T2b-14 | Capture after the checkout hold expired: full refund (a capture inside the hold is honored even past the cutoff). One dish sold out between checkout and payment: partial refund, the rest proceeds. Every dish fails: full refund including the delivery fee | I | #34 |
 | T2b-15 | Reconciliation: a pending group with a captured payment is confirmed; with a failed payment is cancelled | I | C15 |
 | T2b-16 | Customer cancels the group before `cancel_until_at`: one full refund, reservations voided, capacity and stock restored; after the deadline the cancel is rejected | I | #35, D2 |
 | T2b-16a | Area `cancel_freeze_minutes` empty (cancel disabled): the paid group has `cancel_until_at` NULL and the cancel is rejected | I | geld TIME-3 |
@@ -208,7 +253,9 @@ Backend branches `feature/schedule-2b3` (merged, PR #62) and `feature/schedule-2
 | T4-02 | Slot first, then restaurants: a restaurant past its cutoff for that slot is greyed with the reason, not hidden | E | #3 |
 | T4-03 | A dish reappears after a restock on the next refresh; a sold-out dish is greyed | E | #15 |
 | T4-04 | Two-restaurant cart, one payment, itemized lines; `PRICE_CHANGED` shows a confirmation dialog | E | #30 |
-| T4-05 | Cutoff passes while the payment sheet is open: the customer is told and refunded | E | #34 |
+| T4-05 | Cutoff passes while the payment sheet is open: a payment inside the checkout hold is honored (order booked); a payment landing after the hold expired is told and fully refunded (holds at checkout, 2b.6, 2026-10-28) | E | #34 |
+| T4-08 | A restaurant that closed ordering (its order-until passed, or nothing left to order) is closed: when no restaurant can take orders for a slot, the slot card shows "Ordering closed" with no "Order by" time or countdown, and the screen refreshes at the restaurant's cutoff, not only at the slot's last call. The card's "Order by" is the latest restaurant cutoff, capped at the slot's last call | E | Samivan 2026-11-25 |
+| T4-09 | Eat Now cart total equals the amount charged: the cart's delivery fee, round-off and grand total come from the same distance-based rule as checkout; Razorpay asks for exactly the cart's grand total. Guarded in CI by `EatNowCartCheckoutParityTest` (no runtime refusal by decision, 2026-11-25) | E+U | phone test 2026-11-25 |
 | T4-06 | Upcoming card shows both order codes; whole-group cancel works before `cancel_until_at` and is hidden after it, and hidden when the area disables cancel | E | #35 |
 | T4-07 | A scheduled order never replaces the active Eat Now order | E | P4 |
 
