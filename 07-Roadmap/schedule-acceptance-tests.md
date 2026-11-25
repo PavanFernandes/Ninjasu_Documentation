@@ -92,14 +92,16 @@ Database: a local scratch Postgres seeded with a test area `ZZ-BTM-PHONE-TEST` a
 | PD-05 | T4-03: sold-out dish greyed; reappears after restock on refresh | DONE |
 | PD-06 | T4-04 (part): two-restaurant cart, itemized, one bill and one Pay (510 + 8 + 5 + 25.50 + 0.50 = 549) | DONE; `PRICE_CHANGED` dialog DONE 2026-11-25 ("Your total changed… New total ₹381 (was ₹349)", line shows was/now) |
 | PD-07 | Cart address re-check: Pay only after the server confirms the address is inside the cart area; outside shows a banner + Change address | DONE; real address picker DONE 2026-11-25 (saved Doddakannelli address -> "Scheduled delivery isn't available at this address" + Change address; back inside -> Pay with UPI) |
-| PD-08 | No meal word in customer text ("Scheduled · Today", "Order ahead", "Delivery around…", "Schedule cart") | DONE on home, list and cart; other screens OWED |
+| PD-08 | No meal word in customer text ("Scheduled · Today", "Order ahead", "Delivery around…", "Schedule cart") | DONE on home, list and cart; other screens PENDING (see PD-18) |
 | PD-09 | Lifecycle: Home and resume, Back, cold restart keeps login and cart; no crash | DONE (cold start opens Eat Now, not the last mode) |
 | PD-10 | Backend unreachable: no crash, recovers without restart | DONE; Orders error state DONE 2026-11-25 ("This is taking longer than usual" + Retry after 30 s; Retry reloads once the backend is back) |
 | PD-11 | Small display 720x1280 | DONE |
 | PD-12 | Font size 1.3 on a clean start (Schedule home, cart, Eat Now list) | FIXED + DONE; 1.5 DONE 2026-11-25 (cap holds; restaurant tab labels FIXED to stay on one line; address form inputs fine; map picker Confirm button FIXED off the nav bar) |
 | PD-13 | Bill rupee sign matches the total (Schedule and Eat Now carts) | FIXED + DONE |
 | PD-14 | Frontend log clean (Firebase deprecation warnings gone) | FIXED + DONE |
-| PD-15 | T4-05, T4-06, T4-07, push notifications, permission paths | DONE 2026-11-25 with Razorpay test card: T4-05 (paid inside the hold = booked, by design), T4-06 (cancel before deadline + refund raised; hidden after deadline), T4-07; location deny + allow DONE (deny shows "Choose a delivery address"); push OWED (test-key backend runs with Firebase off) |
+| PD-15 | T4-05, T4-06, T4-07, push notifications, permission paths | DONE 2026-11-25 with Razorpay test card: T4-05 (paid inside the hold = booked, by design), T4-06 (cancel before deadline + refund raised; hidden after deadline), T4-07; location deny + allow DONE (deny shows "Choose a delivery address"); push PENDING (see PD-17) |
+| PD-17 | Push notifications: order updates in the foreground and the killed-app ring (Firebase calls moved to the modular API) | PENDING: needs a backend with Firebase on that cannot reach real customers' tokens (the scratch test-key backend runs with Firebase off) |
+| PD-18 | No meal word ("lunch", "dinner") in customer text on the remaining Schedule screens: intro, paused / closed / opens-at states, order detail, cancel and refund dialogs, refusal dialogs | PENDING |
 | PD-16 | T4-08 slot closes when no restaurant can take orders; T4-09 Eat Now cart total = Razorpay amount; refund headline = full refund | FIXED + DONE 2026-11-25 (₹377 cart = ₹377 Razorpay; "Refund initiated · ₹349"; "Order by" takes the restaurant cutoff; "Ordering closed" on both cards) |
 
 ## Phase 2b — Orders, groups, payment, reservations
